@@ -1468,6 +1468,29 @@ Page({
     // 清除对齐参考线
     this._clearAlignmentGuides()
     this.renderCanvas()
+
+    // 双击检测
+    const now = Date.now()
+    if (this._lastTapTime && now - this._lastTapTime < 300) {
+      // 双击事件
+      this._handleDoubleTap(e)
+      this._lastTapTime = 0
+    } else {
+      this._lastTapTime = now
+    }
+  },
+  _handleDoubleTap(e) {
+    const { selectedId, selectedElement } = this.data
+    if (!selectedId || !selectedElement) return
+
+    // 双击文字元素打开编辑
+    if (selectedElement.type === 'text') {
+      this.openSelectedTextEditor()
+    }
+    // 双击矩形占位框添加图片
+    else if (selectedElement.type === 'decoration' && selectedElement.subType === 'rect' && selectedElement.lineStyle === 'dashed') {
+      this.replaceRectWithImage(selectedElement)
+    }
   },
 
   // ==================== 对齐参考线 ====================
