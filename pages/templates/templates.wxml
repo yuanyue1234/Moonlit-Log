@@ -1,0 +1,47 @@
+<view class="page">
+  <view class="header">
+    <view class="eyebrow">TEMPLATES</view>
+    <view class="page-title">选择模板</view>
+    <view class="subtitle">一键套用，快速创建手帐页面。</view>
+  </view>
+  <view class="dashed-divider" style="margin: 0 32rpx;"></view>
+
+  <scroll-view scroll-x class="category-scroll" enhanced show-scrollbar="{{false}}">
+    <view class="category-list">
+      <view
+        class="category-tag {{activeCategory === item ? 'active' : ''}}"
+        wx:for="{{categories}}"
+        wx:key="*this"
+        bindtap="onTapCategory"
+        data-category="{{item}}"
+      >
+        {{item}}
+      </view>
+    </view>
+  </scroll-view>
+
+  <scroll-view scroll-y class="template-list" enhanced show-scrollbar="{{false}}">
+    <view class="template-grid">
+      <view
+        class="template-card"
+        wx:for="{{templates}}"
+        wx:key="id"
+        bindtap="onTapTemplate"
+        data-id="{{item.id}}"
+      >
+        <view class="template-preview" style="background: {{item.background || '#1a1a1a'}};">
+          <view class="template-paper-icon">
+            <view class="paper-line line-a"></view>
+            <view class="paper-line line-b"></view>
+            <view class="paper-line line-c"></view>
+          </view>
+        </view>
+        <view class="template-info">
+          <text class="template-name">{{item.name}}</text>
+          <text class="template-desc">{{item.description}}</text>
+        </view>
+      </view>
+    </view>
+    <view style="height: 60rpx;"></view>
+  </scroll-view>
+</view>

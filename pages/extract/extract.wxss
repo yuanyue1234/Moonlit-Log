@@ -1,0 +1,212 @@
+/* pages/extract/extract.wxss */
+.page { min-height: 100vh; background: #101010; }
+
+/* 通用 */
+.section-header { padding: 40rpx 32rpx 8rpx; }
+.section-header.compact { padding-top: 24rpx; }
+.subtitle { font-size: 22rpx; color: #8b949e; margin-top: 8rpx; }
+
+.usage-bar {
+  display: flex; align-items: center; gap: 12rpx;
+  padding: 0 32rpx; margin: 16rpx 0 24rpx;
+}
+.usage-label { font-size: 22rpx; color: #8b949e; }
+
+/* 上传 */
+.upload-area {
+  margin: 0 32rpx;
+  height: 320rpx;
+  border: 3rpx dashed #3d3a39; border-radius: 24rpx;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #1a1a1a; transition: all 0.2s;
+}
+.upload-area:active { border-color: #00d992; background: rgba(0,217,146,0.05); }
+.upload-icon { font-size: 64rpx; margin-bottom: 12rpx; }
+.upload-text { font-size: 28rpx; color: #f2f2f2; font-weight: 600; }
+.upload-hint { font-size: 22rpx; color: #8b949e; margin-top: 8rpx; }
+.camera-btn { margin-top: 24rpx; }
+
+/* 最近提取 */
+.recent-section { margin: 32rpx 32rpx 0; }
+.recent-scroll { white-space: nowrap; }
+.recent-list { display: flex; gap: 16rpx; padding: 12rpx 0; }
+.recent-item {
+  width: 140rpx; height: 140rpx; border-radius: 16rpx;
+  background: #1a1a1a; border: 1rpx solid #3d3a39; flex-shrink: 0;
+}
+
+/* 处理中 */
+.processing-view { padding: 60rpx 32rpx; display: flex; flex-direction: column; align-items: center; }
+.preview-container {
+  width: 320rpx; height: 320rpx; border-radius: 24rpx; overflow: hidden;
+  border: 1rpx solid #3d3a39; margin-bottom: 32rpx;
+}
+.preview-image { width: 100%; height: 100%; }
+.processing-status {
+  display: flex; align-items: center; justify-content: center; gap: 12rpx; margin-bottom: 16rpx;
+}
+.processing-text { font-size: 28rpx; color: #f2f2f2; }
+.progress-bar {
+  width: 100%; height: 6rpx; background: #3d3a39;
+  border-radius: 3rpx; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: #00d992; border-radius: 3rpx;
+  transition: width 0.3s ease;
+}
+.progress-hint { font-size: 22rpx; color: #8b949e; text-align: center; margin-top: 20rpx; }
+
+/* 完成 */
+.done-view { padding: 24rpx 32rpx; }
+
+/* 结果图片 */
+.result-image-wrapper {
+  position: relative; margin: 16rpx 0;
+  border-radius: 16rpx; overflow: hidden;
+  border: 1rpx solid #3d3a39; background: #1a1a1a;
+}
+.result-image {
+  width: 100%; height: 600rpx; display: block;
+}
+.style-hint {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(16,16,16,0.7);
+  padding: 12rpx; text-align: center;
+  font-size: 22rpx; color: #00d992;
+}
+
+/* 标签 */
+.tag-row {
+  display: flex; flex-wrap: wrap; gap: 12rpx;
+  margin: 16rpx 0;
+}
+
+/* 当前样式 */
+.current-style-info {
+  display: flex; align-items: center; gap: 8rpx;
+  margin-bottom: 24rpx;
+}
+.style-label { font-size: 22rpx; color: #8b949e; }
+
+/* MiMo 标签展示 */
+.labels-section { margin-bottom: 24rpx; }
+.label-main {
+  display: flex; align-items: center; gap: 12rpx; margin-bottom: 12rpx;
+}
+.label-main-text {
+  font-size: 36rpx; font-weight: 600; color: #f2f2f2;
+}
+.label-confidence {
+  font-size: 20rpx; color: #00d992; background: rgba(0,217,146,0.1);
+  padding: 2rpx 12rpx; border-radius: 9999rpx;
+}
+.tag-row { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 12rpx; }
+.style-tag {
+  background: rgba(0,217,146,0.08); color: #00d992; border-color: rgba(0,217,146,0.3);
+}
+.label-meta {
+  display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 8rpx;
+}
+.meta-item {
+  font-size: 20rpx; color: #8b949e; padding: 4rpx 16rpx;
+  background: #1a1a1a; border: 1rpx solid #3d3a39; border-radius: 9999rpx;
+}
+.debug-info {
+  margin-bottom: 16rpx; padding: 8rpx 16rpx;
+  background: #1a1a1a; border: 1rpx solid #3d3a39; border-radius: 8rpx;
+}
+.debug-text {
+  font-family: 'SF Mono', 'Menlo', monospace; font-size: 18rpx; color: #8b949e;
+}
+
+/* 操作按钮 */
+.action-area { margin-bottom: 32rpx; }
+.action-gap { margin-top: 16rpx; }
+
+/* 错误 */
+.error-view {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 120rpx 60rpx;
+}
+.error-icon { margin-bottom: 24rpx; }
+.error-text { font-size: 28rpx; color: #f2f2f2; text-align: center; margin-bottom: 12rpx; }
+.error-hint { font-size: 22rpx; color: #8b949e; text-align: center; margin-bottom: 32rpx; }
+.btn-group { display: flex; flex-direction: column; gap: 16rpx; align-items: center; }
+.error-btn { width: 280rpx; }
+
+.extract-icon-img {
+  width: 72rpx;
+  height: 72rpx;
+  margin-bottom: 18rpx;
+  filter: invert(69%) sepia(61%) saturate(1853%) hue-rotate(108deg) brightness(96%) contrast(101%);
+}
+
+.extract-icon-img.alert {
+  filter: invert(58%) sepia(79%) saturate(1792%) hue-rotate(322deg) brightness(101%) contrast(101%);
+}
+
+.result-image-wrapper.effect-white-border {
+  padding: 0;
+  background: #1a1a1a;
+  box-shadow: 0 12rpx 28rpx rgba(0,0,0,0.22);
+}
+
+.result-image-wrapper.effect-white-border .result-image {
+  filter: drop-shadow(0 0 8rpx #ffffff) drop-shadow(0 0 12rpx rgba(255,255,255,0.85));
+}
+
+.result-image-wrapper.effect-paper {
+  padding: 0;
+  background: #1a1a1a;
+  border-color: #d8d0c2;
+  box-shadow: 0 16rpx 34rpx rgba(0,0,0,0.25);
+}
+
+.result-image-wrapper.effect-paper .result-image {
+  filter: drop-shadow(0 0 12rpx #fffaf0) drop-shadow(0 14rpx 14rpx rgba(0,0,0,0.22));
+}
+
+.result-image-wrapper.effect-shadow {
+  box-shadow: 0 20rpx 42rpx rgba(0,0,0,0.42);
+}
+
+.result-image-wrapper.effect-shadow .result-image {
+  filter: drop-shadow(0 18rpx 18rpx rgba(0,0,0,0.38));
+}
+
+.postprocess-inline {
+  margin: 18rpx 0 22rpx;
+  padding: 20rpx;
+  border: 1rpx solid #3d3a39;
+  border-radius: 16rpx;
+  background: #1a1a1a;
+}
+
+.postprocess-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #f2f2f2;
+}
+
+.postprocess-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.postprocess-chip {
+  padding: 10rpx 20rpx;
+  border-radius: 9999rpx;
+  border: 1rpx solid #3d3a39;
+  color: #bdbdbd;
+  background: #101010;
+  font-size: 22rpx;
+}
+
+.postprocess-chip.active,
+.postprocess-card.active {
+  border-color: #00d992;
+  background: rgba(0, 217, 146, 0.1);
+  color: #00d992;
+}

@@ -1,0 +1,243 @@
+<view class="editor-page {{editorMode === 'preview' ? 'preview-mode' : 'edit-mode'}}">
+  <view class="top-bar">
+    <view class="top-left">
+      <view class="icon-btn back-btn" bindtap="onTapBack" aria-label="返回">
+        <image class="ui-icon" src="/assets/icons/arrow-left.svg" mode="aspectFit" />
+      </view>
+      <view class="page-info">
+        <view class="page-name">{{bookName}}</view>
+        <view class="page-hint">{{editorMode === 'preview' ? '预览翻页' : '画布编辑'}}</view>
+      </view>
+    </view>
+
+    <view class="top-right">
+      <view class="mode-toggle {{editorMode === 'preview' ? 'active' : ''}}" bindtap="toggleEditorMode">
+        <image class="ui-icon" src="{{editorMode === 'preview' ? '/assets/icons/edit-3.svg' : '/assets/icons/book-open.svg'}}" mode="aspectFit" />
+        <text>{{editorMode === 'preview' ? '编辑' : '预览'}}</text>
+      </view>
+      <view class="icon-btn {{!canUndo ? 'disabled' : ''}}" bindtap="onTapAction" data-action="undo" aria-label="撤销">
+        <image class="ui-icon" src="/assets/icons/undo.svg" mode="aspectFit" />
+      </view>
+      <view class="icon-btn {{!canRedo ? 'disabled' : ''}}" bindtap="onTapAction" data-action="redo" aria-label="重做">
+        <image class="ui-icon" src="/assets/icons/redo.svg" mode="aspectFit" />
+      </view>
+      <view class="icon-btn" bindtap="onTapAction" data-action="save" aria-label="保存">
+        <image class="ui-icon" src="/assets/icons/save.svg" mode="aspectFit" />
+      </view>
+      <view class="icon-btn export-btn" bindtap="onTapAction" data-action="export" aria-label="导出">
+        <image class="ui-icon" src="/assets/icons/download.svg" mode="aspectFit" />
+      </view>
+    </view>
+  </view>
+
+  <view class="canvas-wrapper" bindtap="closeAllPanels">
+    <view class="page-shell {{flipClass}}" bindtouchstart="onPreviewTouchStart" bindtouchmove="onPreviewTouchMove" bindtouchend="onPreviewTouchEnd">
+      <view class="canvas-container paper-canvas" style="width: {{pageWidth}}rpx; height: {{pageHeight}}rpx;">
+        <canvas
+          id="editorCanvas"
+          type="2d"
+          class="editor-canvas"
+          style="width: {{pageWidth}}rpx; height: {{pageHeight}}rpx;"
+          bindtouchstart="onTouchStart"
+          bindtouchmove="onTouchMove"
+          bindtouchend="onTouchEnd"
+          disable-scroll
+        ></canvas>
+      </view>
+      <view
+        class="flip-layer {{flipState}} {{flipDirection}}"
+        wx:if="{{editorMode === 'preview' && flipState !== 'idle'}}"
+        style="width: {{pageWidth}}rpx; height: {{pageHeight}}rpx; transform: {{flipTransform}}; transform-origin: {{flipDirection === 'next' ? 'left center' : 'right center'}};"
+      >
+        <view class="flip-paper-grain"></view>
+        <view class="flip-paper-lines"></view>
+        <view class="flip-inner-shadow" style="opacity: {{flipShadowOpacity}};"></view>
+        <view class="flip-edge-shadow" style="opacity: {{flipShadowOpacity}};"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="selection-toolbar" wx:if="{{selectedId && editorMode === 'edit'}}">
+    <view class="sel-btn" bindtap="duplicateSelected">
+      <image class="ui-icon" src="/assets/icons/copy.svg" mode="aspectFit" />
+      <text>复制</text>
+    </view>
+    <view class="sel-btn {{selectedElement.effect === 'paper' ? 'active' : ''}} {{selectedElement.locked ? 'disabled' : ''}}" wx:if="{{selectedElement.type === 'image'}}" bindtap="setSelectedEffect" data-effect="{{selectedElement.effect === 'paper' ? 'none' : 'paper'}}">
+      <image class="ui-icon" src="/assets/icons/file-text.svg" mode="aspectFit" />
+      <text>纸边</text>
+    </view>
+    <view class="sel-btn" wx:if="{{selectedElement.type === 'text'}}" bindtap="openSelectedTextEditor">
+      <image class="ui-icon" src="/assets/icons/type.svg" mode="aspectFit" />
+      <text>编辑</text>
+    </view>
+    <view class="sel-btn {{selectedElement.locked ? 'active' : ''}}" bindtap="toggleSelectedLock">
+      <image class="ui-icon" src="{{selectedElement.locked ? '/assets/icons/unlock.svg' : '/assets/icons/lock.svg'}}" mode="aspectFit" />
+      <text>{{selectedElement.locked ? '解锁' : '锁定'}}</text>
+    </view>
+    <view class="sel-btn" bindtap="bringToFront">
+      <image class="ui-icon" src="/assets/icons/layers.svg" mode="aspectFit" />
+      <text>置顶</text>
+    </view>
+    <view class="sel-btn" bindtap="sendToBack">
+      <image class="ui-icon" src="/assets/icons/layers.svg" mode="aspectFit" />
+      <text>置底</text>
+    </view>
+    <view class="sel-btn" bindtap="openSelectedMoreMenu">
+      <image class="ui-icon" src="/assets/icons/more-horizontal.svg" mode="aspectFit" />
+      <text>更多</text>
+    </view>
+    <view class="sel-btn danger {{selectedElement.locked ? 'disabled' : ''}}" bindtap="deleteSelected">
+      <image class="ui-icon" src="/assets/icons/trash-2.svg" mode="aspectFit" />
+      <text>删除</text>
+    </view>
+  </view>
+
+  <view class="page-dots-bar" wx:if="{{bookPages.length > 0}}">
+    <scroll-view scroll-x class="dots-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="dots-row">
+        <view class="page-dot {{currentPageIndex === index ? 'active' : ''}}" wx:for="{{bookPages}}" wx:key="id" data-index="{{index}}" bindtap="onTapPageDot">
+          {{index + 1}}
+        </view>
+        <view class="page-dot add-dot" bindtap="addNewPage" wx:if="{{editorMode === 'edit'}}">+</view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="floating-tool-dock" wx:if="{{editorMode === 'edit'}}">
+    <view class="tool-btn {{showStickerPanel ? 'active' : ''}}" bindtap="toggleStickerPanel">
+      <image class="ui-icon" src="/assets/icons/sticker.svg" mode="aspectFit" />
+      <text>素材</text>
+    </view>
+    <view class="tool-btn {{showTextPanel ? 'active' : ''}}" bindtap="toggleTextPanel">
+      <image class="ui-icon" src="/assets/icons/type.svg" mode="aspectFit" />
+      <text>文字</text>
+    </view>
+    <view class="tool-btn" bindtap="addFromAlbum">
+      <image class="ui-icon" src="/assets/icons/image.svg" mode="aspectFit" />
+      <text>图片</text>
+    </view>
+    <view class="tool-btn" bindtap="addFromCamera">
+      <image class="ui-icon" src="/assets/icons/camera.svg" mode="aspectFit" />
+      <text>拍照</text>
+    </view>
+    <view class="tool-btn {{showBgPanel ? 'active' : ''}}" bindtap="toggleBgPanel">
+      <image class="ui-icon" src="/assets/icons/palette.svg" mode="aspectFit" />
+      <text>背景</text>
+    </view>
+    <view class="tool-btn {{showTemplatePanel ? 'active' : ''}}" bindtap="toggleTemplatePanel">
+      <image class="ui-icon" src="/assets/icons/layout-template.svg" mode="aspectFit" />
+      <text>模板</text>
+    </view>
+  </view>
+
+  <view class="panel {{showStickerPanel ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="panel-header">
+      <view>
+        <text class="panel-title">贴纸素材</text>
+        <text class="panel-subtitle">仅展示上传和提取生成的贴纸</text>
+      </view>
+      <view class="panel-close" bindtap="toggleStickerPanel">
+        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+    </view>
+    <scroll-view scroll-y class="panel-scroll">
+      <view class="sticker-grid" wx:if="{{stickers.length > 0}}">
+        <view class="sticker-item user-sticker" wx:for="{{stickers}}" wx:key="id" bindtap="addUserSticker" data-id="{{item.id}}" data-src="{{item.src}}">
+          <image src="{{item.src}}" mode="aspectFit" class="sticker-img" />
+        </view>
+      </view>
+      <view class="empty-stickers" wx:else>
+        <text class="empty-title">还没有贴纸</text>
+        <text class="empty-hint">从“提取”页生成素材，或直接添加图片到画布。</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="panel {{showTextPanel ? 'show' : ''}}" catchtap="stopPropagation" style="{{showTextPanel && keyboardHeight > 0 ? 'padding-bottom:' + keyboardHeight + 'px;' : ''}}">
+    <view class="panel-header">
+      <text class="panel-title">{{textPanelMode === 'edit' ? '编辑文字' : '添加文字'}}</text>
+      <view class="panel-close" bindtap="toggleTextPanel">
+        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+    </view>
+    <view class="panel-body">
+      <textarea class="text-input" placeholder="输入文字内容" placeholder-class="input-placeholder" value="{{textInput}}" bindinput="onTextInput" maxlength="200" auto-height />
+
+      <text class="eyebrow">字体</text>
+      <view class="font-list">
+        <view class="font-item {{textFontFamily === item.key ? 'active' : ''}}" wx:for="{{textFonts}}" wx:key="key" bindtap="onTextFont" data-font="{{item.key}}" style="font-family: {{item.family}};">
+          {{item.name}}
+        </view>
+      </view>
+
+      <text class="eyebrow">颜色</text>
+      <scroll-view scroll-x class="color-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="color-list">
+          <view class="color-item {{textColor === item ? 'active' : ''}}" wx:for="{{textColors}}" wx:key="*this" style="background: {{item}};" bindtap="onTextColor" data-color="{{item}}"></view>
+        </view>
+      </scroll-view>
+
+      <text class="eyebrow">字号</text>
+      <scroll-view scroll-x class="size-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="size-list">
+          <view class="size-item {{textSize === item ? 'active' : ''}}" wx:for="{{textSizes}}" wx:key="*this" bindtap="onTextSize" data-size="{{item}}">
+            {{item}}
+          </view>
+        </view>
+      </scroll-view>
+
+      <view class="btn btn-primary" bindtap="addText">{{textPanelMode === 'edit' ? '保存文字' : '添加到画布'}}</view>
+    </view>
+  </view>
+
+  <view class="panel {{showBgPanel ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="panel-header">
+      <text class="panel-title">页面背景</text>
+      <view class="panel-close" bindtap="toggleBgPanel">
+        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+    </view>
+    <view class="panel-body">
+      <text class="eyebrow">颜色</text>
+      <view class="bg-color-grid">
+        <view class="bg-color-item {{background === item ? 'active' : ''}}" wx:for="{{bgColors}}" wx:key="*this" style="background: {{item}};" bindtap="onChangeBackground" data-color="{{item}}"></view>
+      </view>
+
+      <text class="eyebrow">纸面</text>
+      <view class="pattern-list">
+        <view class="pattern-item {{bgPattern === 'blank' ? 'active' : ''}}" bindtap="onChangePattern" data-pattern="blank">空白</view>
+        <view class="pattern-item {{bgPattern === 'dots' ? 'active' : ''}}" bindtap="onChangePattern" data-pattern="dots">点阵</view>
+        <view class="pattern-item {{bgPattern === 'lines' ? 'active' : ''}}" bindtap="onChangePattern" data-pattern="lines">横线</view>
+        <view class="pattern-item {{bgPattern === 'grid' ? 'active' : ''}}" bindtap="onChangePattern" data-pattern="grid">网格</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel {{showTemplatePanel ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="panel-header">
+      <text class="panel-title">页面模板</text>
+      <view class="panel-close" bindtap="toggleTemplatePanel">
+        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+    </view>
+    <scroll-view scroll-x class="template-tabs" enhanced show-scrollbar="{{false}}">
+      <view class="tab-list">
+        <view class="tab-item {{activeTemplateCategory === item ? 'active' : ''}}" wx:for="{{templateCategories}}" wx:key="*this" bindtap="onTemplateCategory" data-category="{{item}}">
+          {{item}}
+        </view>
+      </view>
+    </scroll-view>
+    <scroll-view scroll-y class="panel-scroll">
+      <view class="template-grid">
+        <view class="template-card" wx:for="{{templates}}" wx:key="id" bindtap="onTapTemplate" data-id="{{item.id}}">
+          <view class="template-preview" style="background: {{item.background || '#fdf9ef'}};">
+            <view class="template-lines"></view>
+          </view>
+          <text class="template-name">{{item.name}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="panel-mask {{showBgPanel || showStickerPanel || showTextPanel || showTemplatePanel ? 'show' : ''}}" bindtap="closeAllPanels"></view>
+</view>

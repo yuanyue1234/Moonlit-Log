@@ -1,0 +1,277 @@
+/* app.wxss - 暗色主题 - 借鉴 Voltagent 设计系统 */
+
+/* CSS 变量 - 暗色主题 */
+page {
+  /* Brand & Accent */
+  --color-primary: #00d992;
+  --color-primary-soft: #2fd6a1;
+  --color-primary-deep: #10b981;
+  --color-primary-glow: rgba(0, 217, 146, 0.15);
+
+  /* Surface */
+  --color-canvas: #101010;
+  --color-canvas-soft: #1a1a1a;
+  --color-hairline: #3d3a39;
+  --color-hairline-soft: #b8b3b0;
+
+  /* Text */
+  --color-ink: #f2f2f2;
+  --color-ink-strong: #ffffff;
+  --color-body: #bdbdbd;
+  --color-mute: #8b949e;
+
+  /* Semantic */
+  --color-success: #00d992;
+  --color-warning: #ffb84d;
+  --color-danger: #ff6b6b;
+
+  /* Legacy compat */
+  --color-bg: #101010;
+  --color-bg-card: #1a1a1a;
+  --color-text: #f2f2f2;
+  --color-text-light: #bdbdbd;
+  --color-text-muted: #8b949e;
+  --color-border: #3d3a39;
+  --color-shadow: rgba(0, 0, 0, 0.3);
+
+  /* Typography */
+  --font-xs: 22rpx;
+  --font-sm: 24rpx;
+  --font-md: 28rpx;
+  --font-lg: 32rpx;
+  --font-xl: 36rpx;
+  --font-xxl: 44rpx;
+  --font-title: 52rpx;
+
+  /* Shapes */
+  --radius-xs: 8rpx;
+  --radius-sm: 12rpx;
+  --radius-md: 16rpx;
+  --radius-lg: 24rpx;
+  --radius-xl: 32rpx;
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: var(--font-md);
+  line-height: 1.65;
+}
+
+/* 通用类 */
+.container {
+  padding: 32rpx;
+  box-sizing: border-box;
+}
+
+.card {
+  background: var(--color-canvas-soft);
+  border-radius: var(--radius-md);
+  padding: 32rpx;
+  border: 1rpx solid var(--color-hairline);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #101010;
+  height: 88rpx;
+  font-size: var(--font-lg);
+  box-shadow: 0 0 20rpx var(--color-primary-glow);
+}
+
+.btn-primary:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-ink);
+  height: 76rpx;
+  font-size: var(--font-md);
+  border: 1rpx solid var(--color-hairline);
+}
+
+.btn-secondary:active {
+  background: var(--color-canvas-soft);
+  border-color: var(--color-primary-soft);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-primary-soft);
+  height: 76rpx;
+  font-size: var(--font-md);
+  border: 1rpx dashed var(--color-hairline);
+}
+
+.btn-small {
+  height: 56rpx;
+  font-size: var(--font-sm);
+  padding: 0 28rpx;
+}
+
+.btn-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: var(--radius-sm);
+  background: var(--color-canvas-soft);
+  border: 1rpx solid var(--color-hairline);
+  padding: 0;
+}
+
+.btn-icon:active {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 12rpx var(--color-primary-glow);
+}
+
+/* 标题样式 */
+.page-title {
+  font-size: var(--font-title);
+  font-weight: 400;
+  color: var(--color-ink-strong);
+  letter-spacing: -1rpx;
+}
+
+.section-title {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--color-ink);
+  margin-bottom: 24rpx;
+}
+
+.subtitle {
+  font-size: var(--font-sm);
+  color: var(--color-mute);
+}
+
+/* Eyebrow 标签 - Voltagent 风格 */
+.eyebrow {
+  font-size: 22rpx;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 4rpx;
+  color: var(--color-primary);
+  margin-bottom: 12rpx;
+  display: block;
+}
+
+/* 标签 */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 20rpx;
+  border-radius: 9999rpx;
+  font-size: var(--font-xs);
+  background: var(--color-canvas-soft);
+  color: var(--color-primary-soft);
+  border: 1rpx solid var(--color-hairline);
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 60rpx;
+}
+
+.empty-icon {
+  font-size: 120rpx;
+  margin-bottom: 32rpx;
+}
+
+.empty-text {
+  font-size: var(--font-md);
+  color: var(--color-mute);
+  text-align: center;
+  margin-bottom: 40rpx;
+}
+
+/* 动画 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 8rpx var(--color-primary-glow); }
+  50% { box-shadow: 0 0 24rpx var(--color-primary-glow); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10rpx); }
+}
+
+@keyframes flipIn {
+  from { transform: perspective(1200rpx) rotateY(-90deg); opacity: 0; }
+  to { transform: perspective(1200rpx) rotateY(0); opacity: 1; }
+}
+
+.anim-fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.anim-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.anim-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.anim-flip {
+  animation: flipIn 0.5s ease forwards;
+}
+
+/* 隐藏滚动条 */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* 安全区域 */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 分割线 - Voltagent 虚线风格 */
+.dashed-divider {
+  border: none;
+  border-top: 1rpx dashed rgba(79, 93, 117, 0.4);
+  margin: 32rpx 0;
+}
+
+/* Code inline chip 风格 */
+.code-chip {
+  display: inline-block;
+  background: var(--color-canvas-soft);
+  color: var(--color-ink);
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: var(--radius-xs);
+  border: 1rpx solid var(--color-hairline);
+}

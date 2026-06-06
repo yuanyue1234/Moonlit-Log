@@ -1,0 +1,49 @@
+/* pages/templates/templates.wxss - 暗色主题 */
+.page { min-height: 100vh; background: #101010; }
+
+.header { padding: 40rpx 32rpx 16rpx; }
+.subtitle { font-size: 22rpx; color: #8b949e; margin-top: 8rpx; }
+
+.category-scroll { white-space: nowrap; padding: 16rpx 32rpx; }
+.category-list { display: flex; gap: 12rpx; }
+.category-tag {
+  padding: 10rpx 24rpx; border-radius: 9999rpx;
+  background: #1a1a1a; border: 1rpx solid #3d3a39;
+  font-size: 22rpx; color: #8b949e; flex-shrink: 0; transition: all 0.15s;
+}
+.category-tag.active { background: #00d992; color: #101010; border-color: #00d992; }
+
+.template-list { height: calc(100vh - 280rpx); padding: 0 32rpx; }
+.template-grid { display: flex; flex-wrap: wrap; gap: 24rpx; }
+.template-card {
+  width: calc(50% - 12rpx); background: #1a1a1a;
+  border-radius: 16rpx; border: 1rpx solid #3d3a39;
+  overflow: hidden; transition: all 0.15s;
+}
+.template-card:active { border-color: #00d992; }
+.template-preview {
+  width: 100%; aspect-ratio: 3/4; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.template-paper-icon {
+  position: relative;
+  width: 96rpx;
+  height: 124rpx;
+  border: 4rpx solid rgba(255,255,255,0.76);
+  border-radius: 12rpx;
+  box-shadow: 0 10rpx 22rpx rgba(0,0,0,0.18);
+}
+.paper-line {
+  position: absolute;
+  left: 18rpx;
+  right: 18rpx;
+  height: 4rpx;
+  border-radius: 999rpx;
+  background: rgba(255,255,255,0.68);
+}
+.paper-line.line-a { top: 34rpx; }
+.paper-line.line-b { top: 58rpx; }
+.paper-line.line-c { top: 82rpx; }
+.template-info { padding: 20rpx; }
+.template-name { font-size: 28rpx; font-weight: 600; color: #f2f2f2; display: block; margin-bottom: 4rpx; }
+.template-desc { font-size: 20rpx; color: #8b949e; }

@@ -1,0 +1,96 @@
+<view class="page">
+  <view class="idle-view" wx:if="{{step === 'idle'}}">
+    <view class="section-header">
+      <view class="eyebrow">AI EXTRACTION</view>
+      <view class="page-title">素材提取</view>
+      <view class="subtitle">上传图片后自动压缩到 2MB 内，并调用 remove.bg 官方 API 去除背景。</view>
+    </view>
+    <view class="dashed-divider"></view>
+
+    <view class="usage-bar">
+      <text class="usage-label">本月剩余</text>
+      <text class="code-chip">{{monthlyRemaining}} 次</text>
+    </view>
+
+    <view class="upload-area" bindtap="chooseFromAlbum">
+      <image class="extract-icon-img" src="/assets/icons/upload.svg" mode="aspectFit" />
+      <view class="upload-text">上传图片</view>
+      <view class="upload-hint">建议选择主体清晰、边缘完整的图片</view>
+    </view>
+
+    <view class="btn btn-secondary camera-btn" bindtap="takePhoto">拍照提取</view>
+
+    <view class="recent-section" wx:if="{{recentExtracts.length > 0}}">
+      <view class="eyebrow">RECENT</view>
+      <scroll-view scroll-x class="recent-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="recent-list">
+          <image class="recent-item" wx:for="{{recentExtracts}}" wx:key="id" src="{{item.src}}" mode="aspectFit" />
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view class="processing-view" wx:if="{{step === 'processing'}}">
+    <view class="preview-container">
+      <image src="{{originalImage}}" mode="aspectFit" class="preview-image" />
+    </view>
+    <view class="processing-status">
+      <text class="processing-text">{{stageText}}</text>
+      <text class="code-chip">{{progress}}%</text>
+    </view>
+    <view class="progress-bar">
+      <view class="progress-fill" style="width: {{progress}}%;"></view>
+    </view>
+    <view class="progress-hint">正在处理，请保持页面打开。</view>
+  </view>
+
+  <view class="done-view" wx:if="{{step === 'done'}}">
+    <view class="section-header compact">
+      <view class="eyebrow">EXTRACTION COMPLETE</view>
+      <view class="page-title">已生成贴纸</view>
+    </view>
+
+    <view class="result-image-wrapper effect-{{postProcessEffect}}" bindtap="previewImage">
+      <image src="{{processedImage}}" mode="aspectFit" class="result-image" />
+    </view>
+
+    <view class="postprocess-inline">
+      <view class="postprocess-title">后处理效果</view>
+      <view class="postprocess-options">
+        <view class="postprocess-chip {{postProcessEffect === item.key ? 'active' : ''}}" wx:for="{{postProcessOptions}}" wx:key="key" bindtap="onSelectPostProcess" data-effect="{{item.key}}">
+          {{item.name}}
+        </view>
+      </view>
+    </view>
+
+    <view class="tag-row" wx:if="{{autoTags.length > 0}}">
+      <view class="tag" wx:for="{{autoTags}}" wx:key="*this">{{item}}</view>
+    </view>
+
+    <view class="debug-info" wx:if="{{debugInfo}}">
+      <text class="debug-text">remove.bg: {{debugInfo.removeBgMs}}ms · 输入: {{debugInfo.inputSizeKB}}KB</text>
+    </view>
+
+    <view class="action-area">
+      <view class="btn btn-primary" bindtap="saveToLibrary">保存到贴纸库</view>
+      <view class="btn btn-secondary action-gap" bindtap="putInJournal">放入手帐</view>
+      <view class="btn btn-ghost action-gap" bindtap="reset">重新提取</view>
+    </view>
+  </view>
+
+  <view class="error-view" wx:if="{{step === 'error'}}">
+    <view class="error-icon">
+      <image class="extract-icon-img alert" src="{{errorCode === 'NETWORK_ERROR' ? '/assets/icons/wifi-off.svg' : '/assets/icons/circle-alert.svg'}}" mode="aspectFit" />
+    </view>
+    <view class="error-text">{{errorMessage}}</view>
+    <view class="error-hint" wx:if="{{errorCode === 'REMOVE_BG_TIMEOUT'}}">remove.bg 处理较慢，请换小图或稍后重试。</view>
+    <view class="error-hint" wx:if="{{errorCode === 'NETWORK_ERROR'}}">请确认小程序 request 合法域名已配置：https://api.remove.bg</view>
+    <view class="error-hint" wx:if="{{errorCode === 'IMAGE_TOO_LARGE'}}">建议裁剪主体区域后重新上传。</view>
+    <view class="btn-group">
+      <view class="btn btn-primary error-btn" bindtap="retryFromLast" wx:if="{{lastImagePath}}">重新处理</view>
+      <view class="btn btn-secondary error-btn" bindtap="chooseFromAlbum">换一张图</view>
+      <view class="btn btn-ghost error-btn" bindtap="reset">返回</view>
+    </view>
+  </view>
+
+</view>

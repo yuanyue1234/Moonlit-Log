@@ -1,0 +1,153 @@
+<view class="page" wx:if="{{pageReady}}">
+  <view class="header">
+    <view class="header-top">
+      <view>
+        <view class="page-hint eyebrow">MY JOURNAL</view>
+        <view class="page-title">我的手帐</view>
+        <view class="subtitle">{{books.length}} 本手帐</view>
+      </view>
+      <view class="header-actions">
+        <view class="btn btn-icon" bindtap="onTapCreate" hover-class="action-hover">
+          <text class="icon-add">+</text>
+        </view>
+      </view>
+    </view>
+    <view class="dashed-divider"></view>
+  </view>
+
+  <view class="continue-card" wx:if="{{lastEditedBook}}" bindtap="onTapContinue">
+    <view class="continue-left">
+      <view class="continue-label">继续编辑</view>
+      <view class="continue-name">{{lastEditedBook.name}}</view>
+      <view class="continue-meta">{{lastEditedBook.pageCount}} 页 · {{lastEditedBook.timeAgo}}</view>
+    </view>
+    <view class="continue-arrow">›</view>
+  </view>
+
+  <scroll-view scroll-y class="book-list" enhanced show-scrollbar="{{false}}">
+    <view class="book-grid">
+      <view
+        class="book-card {{flippedBookId === item.id ? 'flipping' : ''}}"
+        wx:for="{{books}}"
+        wx:key="id"
+        bindtap="onTapBook"
+        data-id="{{item.id}}"
+        bindlongpress="onLongPressBook"
+        style="animation-delay: {{index * 0.08}}s"
+      >
+        <view class="book-cover" style="background: linear-gradient(135deg, {{item.themeInfo.primary}}22, {{item.themeInfo.secondary}}22);">
+          <view class="cover-line-art">
+            <view class="cover-spine"></view>
+            <view class="cover-page-line line-a"></view>
+            <view class="cover-page-line line-b"></view>
+            <view class="cover-page-line line-c"></view>
+          </view>
+          <view class="cover-theme-tag tag">{{item.themeInfo.name}}</view>
+        </view>
+        <view class="book-info">
+          <view class="book-name">{{item.name}}</view>
+          <view class="book-meta">
+            <text class="book-pages">{{item.pageCount}} 页</text>
+            <text class="book-time code-chip">{{item.themeInfo.name}}</text>
+          </view>
+        </view>
+        <view class="book-edit-btn" catchtap="onTapEditBook" data-id="{{item.id}}">
+          <view class="line-more"></view>
+        </view>
+      </view>
+
+      <view class="book-card book-card-new" bindtap="onTapCreate">
+        <view class="new-icon">+</view>
+        <view class="new-text">新建手帐本</view>
+      </view>
+    </view>
+    <view style="height: 120rpx;"></view>
+  </scroll-view>
+
+  <view class="modal-mask" wx:if="{{showCreateModal}}" bindtap="onCancelCreate">
+    <view class="modal" catchtap="stopPropagation" style="{{keyboardHeight > 0 ? 'padding-bottom:' + keyboardHeight + 'px;' : ''}}">
+      <view class="modal-header">
+        <view class="eyebrow">NEW JOURNAL</view>
+        <view class="modal-title">新建手帐本</view>
+      </view>
+      <view class="modal-body">
+        <view class="input-group">
+          <text class="input-label">名称</text>
+          <input
+            class="input"
+            placeholder="给手帐本起个名字"
+            placeholder-class="input-placeholder"
+            value="{{newBookName}}"
+            bindinput="onInputName"
+            focus="{{showCreateModal}}"
+            maxlength="20"
+          />
+        </view>
+        <view class="input-group">
+          <text class="input-label">主题风格</text>
+          <scroll-view scroll-x class="theme-scroll" enhanced show-scrollbar="{{false}}">
+            <view class="theme-list">
+              <view
+                class="theme-item {{selectedTheme === item.key ? 'active' : ''}}"
+                wx:for="{{themeList}}"
+                wx:key="key"
+                bindtap="onSelectTheme"
+                data-key="{{item.key}}"
+              >
+                <view class="theme-swatch" style="background: linear-gradient(135deg, {{item.primary}}, {{item.secondary}});"></view>
+                <text class="theme-name">{{item.name}}</text>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+      <view class="modal-footer">
+        <view class="btn btn-secondary modal-btn" bindtap="onCancelCreate">取消</view>
+        <view class="btn btn-primary modal-btn" bindtap="onConfirmCreate">创建</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showEditModal}}" bindtap="onCancelEdit">
+    <view class="modal" catchtap="stopPropagation" style="{{keyboardHeight > 0 ? 'padding-bottom:' + keyboardHeight + 'px;' : ''}}">
+      <view class="modal-header">
+        <view class="eyebrow">EDIT JOURNAL</view>
+        <view class="modal-title">编辑手帐本</view>
+      </view>
+      <view class="modal-body">
+        <view class="input-group">
+          <text class="input-label">名称</text>
+          <input
+            class="input"
+            placeholder="手帐本名称"
+            placeholder-class="input-placeholder"
+            value="{{newBookName}}"
+            bindinput="onInputName"
+            maxlength="20"
+          />
+        </view>
+        <view class="input-group">
+          <text class="input-label">主题风格</text>
+          <scroll-view scroll-x class="theme-scroll" enhanced show-scrollbar="{{false}}">
+            <view class="theme-list">
+              <view
+                class="theme-item {{selectedTheme === item.key ? 'active' : ''}}"
+                wx:for="{{themeList}}"
+                wx:key="key"
+                bindtap="onSelectTheme"
+                data-key="{{item.key}}"
+              >
+                <view class="theme-swatch" style="background: linear-gradient(135deg, {{item.primary}}, {{item.secondary}});"></view>
+                <text class="theme-name">{{item.name}}</text>
+              </view>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+      <view class="modal-footer">
+        <view class="btn btn-secondary modal-btn" bindtap="onCancelEdit">取消</view>
+        <view class="btn btn-primary modal-btn" bindtap="onConfirmEdit">保存</view>
+      </view>
+    </view>
+  </view>
+</view>
