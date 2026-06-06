@@ -137,7 +137,14 @@ Page({
     rectFillColor: 'transparent',
     rectFillColors: ['#FFFFFF', '#F5F5F5', '#FFD1DC', '#A8D8EA', '#FFD93D', '#00d992', '#FF69B4', '#4A90D9'],
     rectStrokeColor: '#333333',
-    rectStrokeColors: ['#333333', '#666666', '#999999', '#FF0000', '#00d992', '#4A90D9', '#FF69B4', '#FFD93D']
+    rectStrokeColors: ['#333333', '#666666', '#999999', '#FF0000', '#00d992', '#4A90D9', '#FF69B4', '#FFD93D'],
+    // 边框面板
+    showBorderPanel: false,
+    borderColor: '#333333',
+    borderWidth: 2,
+    borderStyle: 'solid',
+    borderRadius: 0,
+    borderColors: ['#333333', '#666666', '#999999', '#FFFFFF', '#FF0000', '#00d992', '#4A90D9', '#FF69B4', '#FFD93D', '#FF8C00']
   },
 
   // 历史记录
@@ -537,6 +544,11 @@ Page({
       this._drawDecoration(ctx, el, w, h, scaleX, scaleY)
     }
 
+    // 绘制边框
+    if (el.border) {
+      this._drawBorder(ctx, el.border, w, h)
+    }
+
     // 选中框
     if (isSelected) {
       this._drawSelectionHandles(ctx, w, h, !!el.locked)
@@ -544,6 +556,40 @@ Page({
 
     ctx.restore()
     return result
+  },
+
+  // 绘制元素边框
+  _drawBorder(ctx, border, w, h) {
+    if (!border) return
+
+    const borderColor = border.color || '#333333'
+    const borderWidth = (border.width || 2) * (canvasPxW / canvasWidth)
+    const borderStyle = border.style || 'solid'
+    const borderRadius = (border.radius || 0) * (canvasPxW / canvasWidth)
+
+    ctx.save()
+    ctx.strokeStyle = borderColor
+    ctx.lineWidth = borderWidth
+
+    // 设置线条样式
+    if (borderStyle === 'dashed') {
+      ctx.setLineDash([8, 4])
+    } else if (borderStyle === 'dotted') {
+      ctx.setLineDash([2, 4])
+    } else {
+      ctx.setLineDash([])
+    }
+
+    // 绘制边框
+    if (borderRadius > 0) {
+      this._roundRect(ctx, -w/2 - borderWidth/2, -h/2 - borderWidth/2, w + borderWidth, h + borderWidth, borderRadius)
+      ctx.stroke()
+    } else {
+      ctx.strokeRect(-w/2 - borderWidth/2, -h/2 - borderWidth/2, w + borderWidth, h + borderWidth)
+    }
+
+    ctx.setLineDash([])
+    ctx.restore()
   },
 
   // 绘制旧版贴纸占位
@@ -1882,6 +1928,7 @@ Page({
     const actions = [
       { label: '置顶', fn: () => this.bringToFront() },
       { label: '置底', fn: () => this.sendToBack() },
+      { label: '添加边框', fn: () => this.showBorderPanel() },
       { label: '复制样式', fn: () => this.copySelectedStyle() },
       { label: '粘贴样式', fn: () => this.pasteSelectedStyle() }
     ]
@@ -1893,6 +1940,9 @@ Page({
         { label: '阴影', fn: () => this.setSelectedEffect({ currentTarget: { dataset: { effect: 'shadow' } } }) }
       )
     }
+    if (el.border) {
+      actions.push({ label: '移除边框', fn: () => this.removeBorder() })
+    }
     wx.showActionSheet({
       itemList: actions.map(item => item.label),
       success: (res) => {
@@ -1900,6 +1950,63 @@ Page({
         if (action) action.fn()
       }
     })
+  },
+  showBorderPanel() {
+    const el = this._getSelectedElement()
+    if (!el) return
+    const border = el.border || { color: '#333333', width: 2, style: 'solid', radius: 0 }
+    this.setData({
+      showBorderPanel: true,
+      borderColor: border.color,
+      borderWidth: border.width,
+      borderStyle: border.style,
+      borderRadius: border.radius
+    })
+  },
+  closeBorderPanel() {
+    this.setData({ showBorderPanel: false })
+  },
+  onBorderColor(e) {
+    this.setData({ borderColor: e.currentTarget.dataset.color })
+    this._applyBorder()
+  },
+  openBorderColorPicker() {
+    this.setData({ showColorPicker: true, colorPickerTarget: 'border' })
+  },
+  onBorderWidth(e) {
+    this.setData({ borderWidth: parseInt(e.currentTarget.dataset.width) })
+    this._applyBorder()
+  },
+  onBorderStyle(e) {
+    this.setData({ borderStyle: e.currentTarget.dataset.style })
+    this._applyBorder()
+  },
+  onBorderRadius(e) {
+    this.setData({ borderRadius: parseInt(e.currentTarget.dataset.radius) })
+    this._applyBorder()
+  },
+  _applyBorder() {
+    const el = this._getSelectedElement()
+    if (!el) return
+    const { borderColor, borderWidth, borderStyle, borderRadius } = this.data
+    this._updateElement(el.id, {
+      border: {
+        color: borderColor,
+        width: borderWidth,
+        style: borderStyle,
+        radius: borderRadius
+      }
+    })
+    this.pushHistory()
+    this.renderCanvas()
+  },
+  removeBorder() {
+    const el = this._getSelectedElement()
+    if (!el) return
+    this._updateElement(el.id, { border: null })
+    this.pushHistory()
+    this.renderCanvas()
+    wx.showToast({ title: '已移除边框', icon: 'none' })
   },
 
   // ==================== 历史记录 ====================
@@ -1986,6 +2093,13 @@ Page({
 
     if (colorPickerTarget === 'text') {
       this.setData({ textColor: color })
+    } else if (colorPickerTarget === 'rectFill') {
+      this.setData({ rectFillColor: color })
+    } else if (colorPickerTarget === 'rectStroke') {
+      this.setData({ rectStrokeColor: color })
+    } else if (colorPickerTarget === 'border') {
+      this.setData({ borderColor: color })
+      this._applyBorder()
     } else {
       this.setData({ background: color })
       this.savePage()
@@ -2281,6 +2395,12 @@ Page({
   },
   onRectStrokeColor(e) {
     this.setData({ rectStrokeColor: e.currentTarget.dataset.color })
+  },
+  openRectFillColorPicker() {
+    this.setData({ showColorPicker: true, colorPickerTarget: 'rectFill' })
+  },
+  openRectStrokeColorPicker() {
+    this.setData({ showColorPicker: true, colorPickerTarget: 'rectStroke' })
   },
   addRect() {
     const { rectShape, rectLineStyle, rectStrokeWidth, rectFillColor, rectStrokeColor } = this.data

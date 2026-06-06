@@ -241,6 +241,9 @@
             <text style="font-size: 16rpx; color: #666;">无</text>
           </view>
           <view class="color-item {{rectFillColor === item ? 'active' : ''}}" wx:for="{{rectFillColors}}" wx:key="*this" style="background: {{item}};" bindtap="onRectFillColor" data-color="{{item}}"></view>
+          <view class="color-item color-picker-btn" bindtap="openRectFillColorPicker">
+            <text class="picker-icon">+</text>
+          </view>
         </view>
       </scroll-view>
 
@@ -248,6 +251,9 @@
       <scroll-view scroll-x class="color-scroll" enhanced show-scrollbar="{{false}}">
         <view class="color-list">
           <view class="color-item {{rectStrokeColor === item ? 'active' : ''}}" wx:for="{{rectStrokeColors}}" wx:key="*this" style="background: {{item}};" bindtap="onRectStrokeColor" data-color="{{item}}"></view>
+          <view class="color-item color-picker-btn" bindtap="openRectStrokeColorPicker">
+            <text class="picker-icon">+</text>
+          </view>
         </view>
       </scroll-view>
 
@@ -309,6 +315,59 @@
     </view>
   </view>
 
+  <!-- 边框面板 -->
+  <view class="panel {{showBorderPanel ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="panel-header">
+      <text class="panel-title">元素边框</text>
+      <view class="panel-close" bindtap="closeBorderPanel">
+        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+    </view>
+    <view class="panel-body">
+      <text class="eyebrow">边框颜色</text>
+      <scroll-view scroll-x class="color-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="color-list">
+          <view class="color-item {{borderColor === item ? 'active' : ''}}" wx:for="{{borderColors}}" wx:key="*this" style="background: {{item}};" bindtap="onBorderColor" data-color="{{item}}"></view>
+          <view class="color-item color-picker-btn" bindtap="openBorderColorPicker">
+            <text class="picker-icon">+</text>
+          </view>
+        </view>
+      </scroll-view>
+
+      <text class="eyebrow">边框粗细</text>
+      <view class="border-width-list">
+        <view class="border-width-item {{borderWidth === 1 ? 'active' : ''}}" bindtap="onBorderWidth" data-width="1">1px</view>
+        <view class="border-width-item {{borderWidth === 2 ? 'active' : ''}}" bindtap="onBorderWidth" data-width="2">2px</view>
+        <view class="border-width-item {{borderWidth === 4 ? 'active' : ''}}" bindtap="onBorderWidth" data-width="4">4px</view>
+        <view class="border-width-item {{borderWidth === 8 ? 'active' : ''}}" bindtap="onBorderWidth" data-width="8">8px</view>
+      </view>
+
+      <text class="eyebrow">边框样式</text>
+      <view class="border-style-list">
+        <view class="border-style-item {{borderStyle === 'solid' ? 'active' : ''}}" bindtap="onBorderStyle" data-style="solid">
+          <view class="border-preview border-solid"></view>
+          <text>实线</text>
+        </view>
+        <view class="border-style-item {{borderStyle === 'dashed' ? 'active' : ''}}" bindtap="onBorderStyle" data-style="dashed">
+          <view class="border-preview border-dashed"></view>
+          <text>虚线</text>
+        </view>
+        <view class="border-style-item {{borderStyle === 'dotted' ? 'active' : ''}}" bindtap="onBorderStyle" data-style="dotted">
+          <view class="border-preview border-dotted"></view>
+          <text>点线</text>
+        </view>
+      </view>
+
+      <text class="eyebrow">圆角</text>
+      <view class="border-width-list">
+        <view class="border-width-item {{borderRadius === 0 ? 'active' : ''}}" bindtap="onBorderRadius" data-radius="0">0</view>
+        <view class="border-width-item {{borderRadius === 8 ? 'active' : ''}}" bindtap="onBorderRadius" data-radius="8">8</view>
+        <view class="border-width-item {{borderRadius === 16 ? 'active' : ''}}" bindtap="onBorderRadius" data-radius="16">16</view>
+        <view class="border-width-item {{borderRadius === 50 ? 'active' : ''}}" bindtap="onBorderRadius" data-radius="50">50</view>
+      </view>
+    </view>
+  </view>
+
   <view class="panel {{showTemplatePanel ? 'show' : ''}}" catchtap="stopPropagation">
     <view class="panel-header">
       <text class="panel-title">页面模板</text>
@@ -335,7 +394,7 @@
     </scroll-view>
   </view>
 
-  <view class="panel-mask {{showBgPanel || showStickerPanel || showTextPanel || showTemplatePanel ? 'show' : ''}}" bindtap="closeAllPanels"></view>
+  <view class="panel-mask {{showBgPanel || showStickerPanel || showTextPanel || showTemplatePanel || showRectPanel || showBorderPanel ? 'show' : ''}}" bindtap="closeAllPanels"></view>
 
   <!-- 调色盘弹窗 -->
   <view class="color-picker-mask {{showColorPicker ? 'show' : ''}}" bindtap="closeColorPicker">
