@@ -169,6 +169,8 @@ function saveSticker(sticker) {
     effect: sticker.effect || 'none',
     labels: sticker.labels || null,
     extractResultId: sticker.extractResultId || '',
+    originalWidth: sticker.originalWidth || 0,
+    originalHeight: sticker.originalHeight || 0,
     createdAt: Date.now()
   }
   stickers.unshift(newSticker)

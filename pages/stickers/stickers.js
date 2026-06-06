@@ -258,6 +258,11 @@ Page({
       mediaType: ['image'],
       sourceType: ['album', 'camera'],
       success: async (res) => {
+        if (!res.tempFiles || res.tempFiles.length === 0) {
+          wx.showToast({ title: '未选择图片', icon: 'none' })
+          return
+        }
+
         wx.showLoading({ title: '保存中...' })
         let savedCount = 0
 
@@ -297,6 +302,9 @@ Page({
         wx.hideLoading()
         this.loadStickers()
         wx.showToast({ title: `已添加 ${savedCount} 张`, icon: 'none' })
+      },
+      fail: (err) => {
+        console.log('[stickers] chooseMedia cancelled or failed:', err)
       }
     })
   },
