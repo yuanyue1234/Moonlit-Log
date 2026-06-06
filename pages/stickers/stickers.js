@@ -7,7 +7,6 @@ Page({
     categories: [
       { key: 'all', name: '全部' },
       { key: 'upload', name: '我的上传' },
-      { key: 'ai_extract', name: 'AI 提取' },
       { key: 'favorite', name: '收藏' }
     ],
     activeCategory: 'all',

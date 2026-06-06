@@ -2378,7 +2378,7 @@ Page({
     })
   },
   closeAllPanels() {
-    this.setData({ showBgPanel: false, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false, showDecorationPanel: false, showRectPanel: false, editingTextId: '', textPanelMode: 'add' })
+    this.setData({ showBgPanel: false, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false, showDecorationPanel: false, showRectPanel: false, showBorderPanel: false, editingTextId: '', textPanelMode: 'add' })
   },
   // 矩形工具方法
   onRectShape(e) {
