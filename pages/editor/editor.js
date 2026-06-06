@@ -2440,8 +2440,7 @@ Page({
       showBgPanel: false,
       showStickerPanel: false,
       showTextPanel: false,
-      showTemplatePanel: false,
-      showDecorationPanel: false
+      showTemplatePanel: false
     })
   },
   closeAllPanels() {
