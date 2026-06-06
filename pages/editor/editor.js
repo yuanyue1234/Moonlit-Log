@@ -80,8 +80,7 @@ Page({
     showStickerPanel: false,
     showTextPanel: false,
     showTemplatePanel: false,
-    showDecorationPanel: false,
-    stickers: [],
+        stickers: [],
     templates: [],
     templateCategories: [],
     activeTemplateCategory: '全部',
@@ -1856,8 +1855,7 @@ Page({
       showBgPanel: false,
       showStickerPanel: false,
       showTemplatePanel: false,
-      showDecorationPanel: false,
-      textPanelMode: 'edit',
+            textPanelMode: 'edit',
       editingTextId: el.id,
       textInput: el.text || '',
       textColor: el.color || this.data.textColor,
@@ -2394,8 +2392,7 @@ Page({
       showBgPanel: false,
       showStickerPanel: false,
       showTemplatePanel: false,
-      showDecorationPanel: false,
-      textPanelMode: selectedText ? 'edit' : 'add',
+            textPanelMode: selectedText ? 'edit' : 'add',
       editingTextId: selectedText ? selectedText.id : '',
       textInput: selectedText ? selectedText.text || '' : '',
       textColor: selectedText ? selectedText.color || this.data.textColor : this.data.textColor,
@@ -2405,9 +2402,6 @@ Page({
   },
   toggleTemplatePanel() {
     this.setData({ showTemplatePanel: !this.data.showTemplatePanel, showBgPanel: false, showStickerPanel: false, showTextPanel: false, showDecorationPanel: false })
-  },
-  toggleDecorationPanel() {
-    this.setData({ showDecorationPanel: !this.data.showDecorationPanel, showBgPanel: false, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false })
   },
   toggleRectPanel() {
     this.setData({
