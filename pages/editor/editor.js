@@ -1785,6 +1785,7 @@ Page({
     this.setData({ elements: newElements, selectedId: null, selectedElement: null })
     this.pushHistory()
     this.renderCanvas()
+    wx.vibrateShort({ type: 'medium' })
     wx.showToast({ title: '已删除', icon: 'none', duration: 800 })
   },
 
@@ -1803,6 +1804,7 @@ Page({
     this.setData({ elements, selectedId: newEl.id, selectedElement: newEl })
     this.pushHistory()
     this.renderCanvas()
+    wx.vibrateShort({ type: 'light' })
     wx.showToast({ title: '已复制', icon: 'none', duration: 800 })
   },
 
@@ -2471,6 +2473,7 @@ Page({
     this.pushHistory()
     this.renderCanvas()
     this.toggleRectPanel()
+    wx.vibrateShort({ type: 'light' })
     wx.showToast({ title: '已添加矩形', icon: 'none' })
   },
 
