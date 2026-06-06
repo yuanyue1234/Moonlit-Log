@@ -45,7 +45,7 @@ function loadImage(src, canvas) {
 
 // ========== 触摸状态 ==========
 let touchState = {
-  type: null,        // 'move' | 'scale' | null
+  type: null,        // 'move' | 'scale' | 'rotate' | null
   startX: 0,         // 触摸起始 canvas-local rpx X
   startY: 0,         // 触摸起始 canvas-local rpx Y
   elementStartX: 0,
@@ -55,9 +55,14 @@ let touchState = {
   elementStartR: 0,
   startDist: 0,
   startAngle: 0,
+  startRotateAngle: 0,
   isMoved: false,
-  touchStartTime: 0
+  touchStartTime: 0,
+  resizeCorner: null
 }
+
+// ========== 对齐参考线 ==========
+let alignmentGuides = [] // 临时对齐参考线 {type: 'v'|'h', pos: rpx}
 
 Page({
   data: {
@@ -88,8 +93,8 @@ Page({
     // 文字
     textInput: '',
     textSize: 32,
-    textColor: '#f2f2f2',
-    textColors: ['#f2f2f2', '#ffffff', '#00d992', '#ff8ba7', '#a8d8ea', '#ffd93d', '#ff69b4', '#4a90d9', '#bdbdbd', '#8b949e'],
+    textColor: '#101010',
+    textColors: ['#101010', '#f2f2f2', '#ffffff', '#00d992', '#ff8ba7', '#a8d8ea', '#ffd93d', '#ff69b4', '#4a90d9', '#bdbdbd', '#8b949e', 'picker'],
     textSizes: [24, 28, 32, 36, 40, 48, 56, 64, 72, 80],
     textFontFamily: 'handwriting',
     editingTextId: '',
@@ -113,10 +118,26 @@ Page({
     // 背景选项
     bgColors: ['#FFFFFF', '#FFF8F0', '#FFF5F5', '#F5F0FF', '#F0F5FF', '#F0FFF5', '#FFFFF0', '#F5EDE3', '#1a1a1a', '#1a1520', '#15201a', '#201a15'],
     bgPatterns: ['blank', 'dots', 'lines', 'grid'],
+    bgTexture: 'none',
     // 是否有未保存的图片需要异步加载
     _pendingImageRenders: false,
     // 输入法高度适配
-    keyboardHeight: 0
+    keyboardHeight: 0,
+    // 调色盘
+    showColorPicker: false,
+    colorPickerTarget: 'text', // 'text' or 'bg'
+    colorPickerHue: 0,
+    colorPickerSaturation: 100,
+    colorPickerValue: 100,
+    // 矩形工具
+    showRectPanel: false,
+    rectShape: 'rect', // rect, roundRect, circle, ellipse
+    rectLineStyle: 'solid', // solid, dashed, dotted
+    rectStrokeWidth: 2,
+    rectFillColor: 'transparent',
+    rectFillColors: ['#FFFFFF', '#F5F5F5', '#FFD1DC', '#A8D8EA', '#FFD93D', '#00d992', '#FF69B4', '#4A90D9'],
+    rectStrokeColor: '#333333',
+    rectStrokeColors: ['#333333', '#666666', '#999999', '#FF0000', '#00d992', '#4A90D9', '#FF69B4', '#FFD93D']
   },
 
   // 历史记录
@@ -132,6 +153,9 @@ Page({
       setTimeout(() => wx.navigateBack(), 1500)
       return
     }
+
+    // 初始化页面历史记录 Map
+    this.pageHistories = new Map()
 
     const themeInfo = themeUtil.getTheme(book.theme)
     let page = null
@@ -177,6 +201,7 @@ Page({
       elements: page.elements || [],
       background: page.background || '#FFFFFF',
       bgPattern: page.bgPattern || 'blank',
+      bgTexture: page.bgTexture || 'none',
       stickers: storage.getStickers(),
       templates: templateUtil.getTemplates(),
       templateCategories: templateUtil.TEMPLATE_CATEGORIES,
@@ -281,13 +306,25 @@ Page({
 
   _doRender() {
     const ctx = canvasCtx
-    const { elements, background, bgPattern, selectedId } = this.data
+    const { elements, background, bgPattern, bgTexture, selectedId } = this.data
 
     // 清空
     ctx.clearRect(0, 0, canvasPxW, canvasPxH)
 
-    // 绘制背景
-    this._drawBackground(ctx, background, bgPattern)
+    // 绘制背景颜色
+    ctx.fillStyle = background
+    ctx.fillRect(0, 0, canvasPxW, canvasPxH)
+
+    // 绘制纸面材质遮罩层（在背景之上，纹路之下）
+    if (bgTexture && bgTexture !== 'none') {
+      this._drawTextureOverlay(ctx, bgTexture, this._isLightColor(background))
+    }
+
+    // 绘制纸面纹路（点阵、横线、网格）
+    this._drawBackgroundPattern(ctx, background, bgPattern)
+
+    // 绘制对齐参考线（在元素下方）
+    this._drawAlignmentGuides(ctx)
 
     // 按 zIndex 排序绘制元素
     const sorted = [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0))
@@ -304,9 +341,8 @@ Page({
     }
   },
 
-  _drawBackground(ctx, color, pattern) {
-    ctx.fillStyle = color
-    ctx.fillRect(0, 0, canvasPxW, canvasPxH)
+  _drawBackgroundPattern(ctx, color, pattern) {
+    if (pattern === 'blank') return
 
     ctx.save()
     const spacing = 20
@@ -345,6 +381,122 @@ Page({
         ctx.stroke()
       }
     }
+    ctx.restore()
+  },
+
+  // 绘制纸面材质叠加效果 - 作为遮罩层覆盖在背景上
+  _drawTextureOverlay(ctx, texture, isLight) {
+    ctx.save()
+
+    // 根据材质类型绘制不同的纹理效果
+    const w = canvasPxW
+    const h = canvasPxH
+
+    // 使用半透明颜色绘制纹理，作为遮罩层
+    const textureColor = isLight ? 'rgba(0, 0, 0, ' : 'rgba(255, 255, 255, '
+
+    if (texture === 'grain') {
+      // 纸纹 - 细微颗粒感
+      ctx.globalAlpha = 0.08
+      for (let i = 0; i < 3000; i++) {
+        const x = Math.random() * w
+        const y = Math.random() * h
+        const size = Math.random() * 2 + 0.5
+        ctx.fillStyle = textureColor + (Math.random() * 0.5 + 0.2) + ')'
+        ctx.fillRect(x, y, size, size)
+      }
+    } else if (texture === 'canvas') {
+      // 画布 - 十字编织纹理
+      ctx.globalAlpha = 0.06
+      ctx.strokeStyle = textureColor + '0.3)'
+      ctx.lineWidth = 0.5
+      for (let x = 0; x < w; x += 4) {
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, h)
+        ctx.stroke()
+      }
+      for (let y = 0; y < h; y += 4) {
+        ctx.beginPath()
+        ctx.moveTo(0, y)
+        ctx.lineTo(w, y)
+        ctx.stroke()
+      }
+    } else if (texture === 'kraft') {
+      // 牛皮纸 - 纤维纹理
+      ctx.globalAlpha = 0.05
+      ctx.strokeStyle = textureColor + '0.25)'
+      ctx.lineWidth = 0.3
+      for (let i = 0; i < 600; i++) {
+        const x = Math.random() * w
+        const y = Math.random() * h
+        const len = Math.random() * 20 + 5
+        const angle = Math.random() * Math.PI
+        ctx.beginPath()
+        ctx.moveTo(x, y)
+        ctx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len)
+        ctx.stroke()
+      }
+      // 添加噪点
+      ctx.globalAlpha = 0.08
+      for (let i = 0; i < 1500; i++) {
+        const x = Math.random() * w
+        const y = Math.random() * h
+        ctx.fillStyle = textureColor + (Math.random() * 0.4 + 0.1) + ')'
+        ctx.fillRect(x, y, 1, 1)
+      }
+    } else if (texture === 'linen') {
+      // 亚麻 - 编织纹理
+      ctx.globalAlpha = 0.05
+      ctx.strokeStyle = textureColor + '0.25)'
+      ctx.lineWidth = 0.4
+      // 横向纤维
+      for (let y = 0; y < h; y += 6) {
+        ctx.beginPath()
+        for (let x = 0; x < w; x += 2) {
+          const offsetY = Math.sin(x * 0.1) * 0.5
+          if (x === 0) ctx.moveTo(x, y + offsetY)
+          else ctx.lineTo(x, y + offsetY)
+        }
+        ctx.stroke()
+      }
+      // 纵向纤维
+      for (let x = 0; x < w; x += 6) {
+        ctx.beginPath()
+        for (let y = 0; y < h; y += 2) {
+          const offsetX = Math.sin(y * 0.1) * 0.5
+          if (y === 0) ctx.moveTo(x + offsetX, y)
+          else ctx.lineTo(x + offsetX, y)
+        }
+        ctx.stroke()
+      }
+    } else if (texture === 'watercolor') {
+      // 水彩 - 晕染效果
+      ctx.globalAlpha = 0.06
+      const spots = [
+        { x: w * 0.3, y: h * 0.4, r: w * 0.25 },
+        { x: w * 0.7, y: h * 0.6, r: w * 0.2 },
+        { x: w * 0.5, y: h * 0.2, r: w * 0.18 },
+        { x: w * 0.2, y: h * 0.8, r: w * 0.15 },
+        { x: w * 0.8, y: h * 0.3, r: w * 0.22 }
+      ]
+      spots.forEach(spot => {
+        const gradient = ctx.createRadialGradient(spot.x, spot.y, 0, spot.x, spot.y, spot.r)
+        gradient.addColorStop(0, textureColor + '0.15)')
+        gradient.addColorStop(1, textureColor + '0)')
+        ctx.fillStyle = gradient
+        ctx.fillRect(0, 0, w, h)
+      })
+      // 添加一些随机噪点
+      ctx.globalAlpha = 0.08
+      for (let i = 0; i < 600; i++) {
+        const x = Math.random() * w
+        const y = Math.random() * h
+        ctx.fillStyle = textureColor + (Math.random() * 0.3 + 0.1) + ')'
+        ctx.fillRect(x, y, Math.random() * 2, Math.random() * 2)
+      }
+    }
+
     ctx.restore()
   },
 
@@ -583,6 +735,63 @@ Page({
       ctx.strokeStyle = el.borderColor || '#3d3a39'
       ctx.lineWidth = 2
       ctx.stroke()
+    }
+    // ===== 矩形工具 =====
+    else if (subType === 'rect') {
+      const shapeType = el.shapeType || 'rect'
+      const fillColor = el.fillColor || 'transparent'
+      const strokeColor = el.strokeColor || '#333333'
+      const strokeWidth = (el.strokeWidth || 2) * (canvasPxW / canvasWidth)
+      const lineStyle = el.lineStyle || 'solid'
+      const borderRadius = (el.borderRadius || 0) * (canvasPxW / canvasWidth)
+
+      ctx.lineWidth = strokeWidth
+      ctx.strokeStyle = strokeColor
+
+      // 设置线条样式
+      if (lineStyle === 'dashed') {
+        ctx.setLineDash([8, 4])
+      } else if (lineStyle === 'dotted') {
+        ctx.setLineDash([2, 4])
+      } else {
+        ctx.setLineDash([])
+      }
+
+      // 根据形状类型绘制
+      if (shapeType === 'circle') {
+        const r = Math.min(w, h) / 2
+        ctx.beginPath()
+        ctx.arc(0, 0, r, 0, Math.PI * 2)
+        if (fillColor !== 'transparent') {
+          ctx.fillStyle = fillColor
+          ctx.fill()
+        }
+        ctx.stroke()
+      } else if (shapeType === 'ellipse') {
+        ctx.beginPath()
+        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2)
+        if (fillColor !== 'transparent') {
+          ctx.fillStyle = fillColor
+          ctx.fill()
+        }
+        ctx.stroke()
+      } else if (shapeType === 'roundRect') {
+        this._roundRect(ctx, -w/2, -h/2, w, h, borderRadius)
+        if (fillColor !== 'transparent') {
+          ctx.fillStyle = fillColor
+          ctx.fill()
+        }
+        ctx.stroke()
+      } else {
+        // 普通矩形
+        if (fillColor !== 'transparent') {
+          ctx.fillStyle = fillColor
+          ctx.fillRect(-w/2, -h/2, w, h)
+        }
+        ctx.strokeRect(-w/2, -h/2, w, h)
+      }
+
+      ctx.setLineDash([])
     }
     // ===== 新增装饰类型 =====
     else if (subType === 'tape') {
@@ -936,6 +1145,48 @@ Page({
     return { x: rpxX, y: rpxY }
   },
 
+  // 检测是否点击了角手柄（用于拖拽缩放）或旋转手柄
+  _hitTestHandle(tx, ty) {
+    const el = this._getSelectedElement()
+    if (!el || el.locked) return null
+
+    const ex = el.x
+    const ey = el.y
+    const ew = (el.width || 100)
+    const eh = (el.height || 100)
+    const rot = (el.rotation || 0) * Math.PI / 180
+    const handleSize = 20 // rpx 角手柄检测范围
+    const rotateHandleSize = 18 // rpx 旋转手柄检测范围
+
+    const cos = Math.cos(-rot)
+    const sin = Math.sin(-rot)
+    const dx = tx - ex
+    const dy = ty - ey
+    const lx = dx * cos - dy * sin
+    const ly = dx * sin + dy * cos
+
+    // 先检测旋转手柄（在选框上方延伸的圆点）
+    const rotateHandleX = 0
+    const rotateHandleY = -eh / 2 - 28
+    if (Math.abs(lx - rotateHandleX) <= rotateHandleSize && Math.abs(ly - rotateHandleY) <= rotateHandleSize) {
+      return { corner: 'rotate', el }
+    }
+
+    const corners = [
+      { name: 'tl', x: -ew/2 - 4, y: -eh/2 - 4 },
+      { name: 'tr', x:  ew/2 + 4, y: -eh/2 - 4 },
+      { name: 'bl', x: -ew/2 - 4, y:  eh/2 + 4 },
+      { name: 'br', x:  ew/2 + 4, y:  eh/2 + 4 }
+    ]
+
+    for (const corner of corners) {
+      if (Math.abs(lx - corner.x) <= handleSize && Math.abs(ly - corner.y) <= handleSize) {
+        return { corner: corner.name, el }
+      }
+    }
+    return null
+  },
+
   // 命中测试 - 使用 rpx 坐标 (与元素坐标系一致)
   _hitTest(tx, ty) {
     const { elements } = this.data
@@ -976,7 +1227,29 @@ Page({
       touchState.touchStartTime = Date.now()
       touchState.isMoved = false
 
-      // 命中测试
+      // 优先检测角手柄（拖拽缩放或旋转）
+      const handleHit = this._hitTestHandle(pos.x, pos.y)
+      if (handleHit) {
+        if (handleHit.corner === 'rotate') {
+          touchState.type = 'rotate'
+          touchState.elementStartR = handleHit.el.rotation || 0
+          // 记录起始角度（从元素中心到触摸点的角度）
+          touchState.startRotateAngle = Math.atan2(pos.y - handleHit.el.y, pos.x - handleHit.el.x) * 180 / Math.PI
+        } else {
+          touchState.type = 'resize'
+          touchState.resizeCorner = handleHit.corner
+        }
+        touchState.elementStartX = handleHit.el.x
+        touchState.elementStartY = handleHit.el.y
+        touchState.elementStartW = handleHit.el.width || 100
+        touchState.elementStartH = handleHit.el.height || 100
+        touchState.elementStartR = handleHit.el.rotation || 0
+        touchState.elementStartFontSize = handleHit.el.fontSize || 32
+        this.renderCanvas()
+        return
+      }
+
+      // 命中测试（移动）
       const hitEl = this._hitTest(pos.x, pos.y)
       if (hitEl) {
         this.setData({ selectedId: hitEl.id, selectedElement: hitEl })
@@ -1023,6 +1296,71 @@ Page({
     if (this.data.editorMode !== 'edit') return
     touchState.isMoved = true
 
+    // 旋转手柄拖拽
+    if (e.touches.length === 1 && touchState.type === 'rotate') {
+      const pos = this._touchToCanvasRpx(e.touches[0])
+      if (!pos) return
+      const el = this._getSelectedElement()
+      if (!el || el.locked) return
+
+      const currentAngle = Math.atan2(pos.y - el.y, pos.x - el.x) * 180 / Math.PI
+      const angleDelta = currentAngle - touchState.startRotateAngle
+      const newRotation = touchState.elementStartR + angleDelta
+
+      this._updateElement(el.id, { rotation: Math.round(newRotation) })
+      this.renderCanvas()
+      return
+    }
+
+    // 角手柄拖拽缩放
+    if (e.touches.length === 1 && touchState.type === 'resize') {
+      const pos = this._touchToCanvasRpx(e.touches[0])
+      if (!pos) return
+
+      const dx = pos.x - touchState.startX
+      const dy = pos.y - touchState.startY
+      const corner = touchState.resizeCorner
+      const el = this._getSelectedElement()
+      if (!el || el.locked) return
+
+      let newW = touchState.elementStartW
+      let newH = touchState.elementStartH
+
+      // 根据角手柄方向计算新尺寸
+      if (corner === 'br') {
+        newW = Math.max(30, touchState.elementStartW + dx)
+        newH = Math.max(30, touchState.elementStartH + dy)
+      } else if (corner === 'bl') {
+        newW = Math.max(30, touchState.elementStartW - dx)
+        newH = Math.max(30, touchState.elementStartH + dy)
+      } else if (corner === 'tr') {
+        newW = Math.max(30, touchState.elementStartW + dx)
+        newH = Math.max(30, touchState.elementStartH - dy)
+      } else if (corner === 'tl') {
+        newW = Math.max(30, touchState.elementStartW - dx)
+        newH = Math.max(30, touchState.elementStartH - dy)
+      }
+
+      // 保持宽高比
+      const ratio = touchState.elementStartW / touchState.elementStartH
+      if (Math.abs(dx) > Math.abs(dy)) {
+        newH = newW / ratio
+      } else {
+        newW = newH * ratio
+      }
+
+      // 对于文字元素，同时更新字体大小
+      const updates = { width: Math.round(newW), height: Math.round(newH) }
+      if (el.type === 'text' && el.fontSize) {
+        const scaleFactor = newW / touchState.elementStartW
+        updates.fontSize = Math.round(touchState.elementStartFontSize * scaleFactor)
+      }
+
+      this._updateElement(el.id, updates)
+      this.renderCanvas()
+      return
+    }
+
     if (e.touches.length === 1 && touchState.type === 'move') {
       const pos = this._touchToCanvasRpx(e.touches[0])
       if (!pos) return
@@ -1032,8 +1370,24 @@ Page({
 
       const el = this._getSelectedElement()
       if (el && !el.locked) {
-        const newX = touchState.elementStartX + dx
-        const newY = touchState.elementStartY + dy
+        let newX = touchState.elementStartX + dx
+        let newY = touchState.elementStartY + dy
+
+        // 创建临时元素用于对齐检测
+        const tempEl = { ...el, x: newX, y: newY }
+        const guides = this._detectAlignmentGuides(tempEl)
+
+        // 吸附到最近的参考线
+        const snapThreshold = 6
+        for (const guide of guides) {
+          if (guide.type === 'v' && !guide.isCenter) {
+            if (Math.abs(newX - guide.pos) < snapThreshold) newX = guide.pos
+          }
+          if (guide.type === 'h' && !guide.isCenter) {
+            if (Math.abs(newY - guide.pos) < snapThreshold) newY = guide.pos
+          }
+        }
+
         this._updateElement(el.id, { x: newX, y: newY })
         this.renderCanvas()
       }
@@ -1066,6 +1420,117 @@ Page({
     }
     touchState.type = null
     touchState.isMoved = false
+    // 清除对齐参考线
+    this._clearAlignmentGuides()
+    this.renderCanvas()
+  },
+
+  // ==================== 对齐参考线 ====================
+  _detectAlignmentGuides(movingEl) {
+    const guides = []
+    const threshold = 8 // rpx 对齐容差
+    const { elements } = this.data
+    const otherElements = elements.filter(el => el.id !== movingEl.id)
+
+    // 移动元素的关键点
+    const meX = movingEl.x
+    const meY = movingEl.y
+    const meW = movingEl.width || 100
+    const meH = movingEl.height || 100
+    const meLeft = meX - meW / 2
+    const meRight = meX + meW / 2
+    const meTop = meY - meH / 2
+    const meBottom = meY + meH / 2
+
+    // 画布中心线
+    const canvasCenterX = canvasWidth / 2
+    const canvasCenterY = canvasHeight / 2
+
+    // 检测与画布中心对齐
+    if (Math.abs(meX - canvasCenterX) <= threshold) {
+      guides.push({ type: 'v', pos: canvasCenterX, isCenter: true })
+    }
+    if (Math.abs(meY - canvasCenterY) <= threshold) {
+      guides.push({ type: 'h', pos: canvasCenterY, isCenter: true })
+    }
+
+    // 检测与其他元素对齐
+    for (const other of otherElements) {
+      const oX = other.x
+      const oY = other.y
+      const oW = other.width || 100
+      const oH = other.height || 100
+      const oLeft = oX - oW / 2
+      const oRight = oX + oW / 2
+      const oTop = oY - oH / 2
+      const oBottom = oY + oH / 2
+
+      // 垂直对齐（X轴）
+      const vChecks = [
+        { moving: meX, other: oX },      // 中心对中心
+        { moving: meLeft, other: oLeft }, // 左对左
+        { moving: meRight, other: oRight }, // 右对右
+        { moving: meLeft, other: oRight }, // 左对右
+        { moving: meRight, other: oLeft }  // 右对左
+      ]
+      for (const check of vChecks) {
+        if (Math.abs(check.moving - check.other) <= threshold) {
+          guides.push({ type: 'v', pos: check.other })
+        }
+      }
+
+      // 水平对齐（Y轴）
+      const hChecks = [
+        { moving: meY, other: oY },      // 中心对中心
+        { moving: meTop, other: oTop },   // 上对上
+        { moving: meBottom, other: oBottom }, // 下对下
+        { moving: meTop, other: oBottom }, // 上对下
+        { moving: meBottom, other: oTop }  // 下对上
+      ]
+      for (const check of hChecks) {
+        if (Math.abs(check.moving - check.other) <= threshold) {
+          guides.push({ type: 'h', pos: check.other })
+        }
+      }
+    }
+
+    alignmentGuides = guides
+    return guides
+  },
+
+  _clearAlignmentGuides() {
+    alignmentGuides = []
+  },
+
+  _drawAlignmentGuides(ctx) {
+    if (alignmentGuides.length === 0) return
+
+    const scaleX = canvasPxW / canvasWidth
+    const scaleY = canvasPxH / canvasHeight
+
+    ctx.save()
+    ctx.strokeStyle = '#4a90d9'
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 4])
+    ctx.globalAlpha = 0.7
+
+    for (const guide of alignmentGuides) {
+      ctx.beginPath()
+      if (guide.type === 'v') {
+        const x = guide.pos * scaleX
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, canvasPxH)
+      } else {
+        const y = guide.pos * scaleY
+        ctx.moveTo(0, y)
+        ctx.lineTo(canvasPxW, y)
+      }
+      ctx.stroke()
+    }
+
+    ctx.setLineDash([])
+    ctx.globalAlpha = 1
+    ctx.restore()
   },
 
   // ==================== 元素操作 ====================
@@ -1415,6 +1880,8 @@ Page({
     const el = this._getSelectedElement()
     if (!el) return
     const actions = [
+      { label: '置顶', fn: () => this.bringToFront() },
+      { label: '置底', fn: () => this.sendToBack() },
       { label: '复制样式', fn: () => this.copySelectedStyle() },
       { label: '粘贴样式', fn: () => this.pasteSelectedStyle() }
     ]
@@ -1479,14 +1946,94 @@ Page({
   // ==================== 背景 ====================
   onChangeBackground(e) {
     const color = e.currentTarget.dataset.color
-    this.setData({ background: color })
-    this.savePage()
-    this.renderCanvas()
+    if (color === 'picker') {
+      // 打开调色盘
+      this.setData({ showColorPicker: true, colorPickerTarget: 'bg' })
+    } else {
+      this.setData({ background: color })
+      this.savePage()
+      this.renderCanvas()
+    }
+  },
+
+  // ==================== 调色盘 ====================
+  openColorPicker(target) {
+    this.setData({ showColorPicker: true, colorPickerTarget: target })
+  },
+
+  closeColorPicker() {
+    this.setData({ showColorPicker: false })
+  },
+
+  onColorPickerHueChange(e) {
+    this.setData({ colorPickerHue: e.detail.value })
+    this._updateColorFromPicker()
+  },
+
+  onColorPickerSatChange(e) {
+    this.setData({ colorPickerSaturation: e.detail.value })
+    this._updateColorFromPicker()
+  },
+
+  onColorPickerValChange(e) {
+    this.setData({ colorPickerValue: e.detail.value })
+    this._updateColorFromPicker()
+  },
+
+  _updateColorFromPicker() {
+    const { colorPickerHue, colorPickerSaturation, colorPickerValue, colorPickerTarget } = this.data
+    const color = this._hsvToHex(colorPickerHue, colorPickerSaturation, colorPickerValue)
+
+    if (colorPickerTarget === 'text') {
+      this.setData({ textColor: color })
+    } else {
+      this.setData({ background: color })
+      this.savePage()
+      this.renderCanvas()
+    }
+  },
+
+  _hsvToHex(h, s, v) {
+    s = s / 100
+    v = v / 100
+    const c = v * s
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1))
+    const m = v - c
+    let r, g, b
+
+    if (h < 60) { r = c; g = x; b = 0 }
+    else if (h < 120) { r = x; g = c; b = 0 }
+    else if (h < 180) { r = 0; g = c; b = x }
+    else if (h < 240) { r = 0; g = x; b = c }
+    else if (h < 300) { r = x; g = 0; b = c }
+    else { r = c; g = 0; b = x }
+
+    r = Math.round((r + m) * 255)
+    g = Math.round((g + m) * 255)
+    b = Math.round((b + m) * 255)
+
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  },
+
+  confirmColorPicker() {
+    const { colorPickerTarget } = this.data
+    if (colorPickerTarget === 'bg') {
+      this.savePage()
+      this.renderCanvas()
+    }
+    this.setData({ showColorPicker: false })
   },
 
   onChangePattern(e) {
     const pattern = e.currentTarget.dataset.pattern
     this.setData({ bgPattern: pattern })
+    this.savePage()
+    this.renderCanvas()
+  },
+
+  onChangeTexture(e) {
+    const texture = e.currentTarget.dataset.texture
+    this.setData({ bgTexture: texture })
     this.savePage()
     this.renderCanvas()
   },
@@ -1541,9 +2088,9 @@ Page({
     // 防抖：500ms 内多次保存只执行最后一次
     if (this._saveTimer) clearTimeout(this._saveTimer)
     this._saveTimer = setTimeout(() => {
-      const { pageId, elements, background, bgPattern } = this.data
+      const { pageId, elements, background, bgPattern, bgTexture } = this.data
       if (pageId) {
-        storage.updatePage(pageId, { elements, background, bgPattern })
+        storage.updatePage(pageId, { elements, background, bgPattern, bgTexture })
         this.setData({ isSaving: true })
         setTimeout(() => this.setData({ isSaving: false }), 800)
       }
@@ -1562,6 +2109,51 @@ Page({
       case 'export': this.exportImage(); break
       case 'layers': this.showLayerPanel(); break
     }
+  },
+
+  toggleMoreMenu() {
+    const { bookPages, currentPageIndex } = this.data
+    const canDeletePage = bookPages && bookPages.length > 1
+    const actions = [
+      { label: '保存', fn: () => { this._syncSave(); wx.showToast({ title: '已保存', icon: 'none' }) } },
+      { label: '导出到相册', fn: () => this.exportImage() },
+      { label: '图层管理', fn: () => this.showLayerPanel() }
+    ]
+    if (canDeletePage) {
+      actions.push({ label: '删除此页', fn: () => this._confirmDeletePage(), danger: true })
+    }
+    wx.showActionSheet({
+      itemList: actions.map(item => item.label),
+      success: (res) => {
+        const action = actions[res.tapIndex]
+        if (action) action.fn()
+      }
+    })
+  },
+
+  _confirmDeletePage() {
+    const { bookPages, currentPageIndex, bookId } = this.data
+    wx.showModal({
+      title: '删除此页',
+      content: '确定删除当前页面吗？此操作不可撤销。',
+      confirmColor: '#c24135',
+      success: (res) => {
+        if (res.confirm) {
+          const pageId = bookPages[currentPageIndex].id
+          storage.deletePage(pageId)
+          // 跳转到上一页或第一页
+          const newIndex = Math.max(0, currentPageIndex - 1)
+          const remaining = storage.getPages(bookId)
+          if (remaining.length === 0) {
+            // 如果删完了，创建一个新页
+            const newPage = storage.createPage(bookId)
+            wx.redirectTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${newPage.id}` })
+          } else {
+            wx.redirectTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${remaining[newIndex].id}` })
+          }
+        }
+      }
+    })
   },
 
   exportImage() {
@@ -1661,12 +2253,77 @@ Page({
   toggleDecorationPanel() {
     this.setData({ showDecorationPanel: !this.data.showDecorationPanel, showBgPanel: false, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false })
   },
+  toggleRectPanel() {
+    this.setData({
+      showRectPanel: !this.data.showRectPanel,
+      showBgPanel: false,
+      showStickerPanel: false,
+      showTextPanel: false,
+      showTemplatePanel: false,
+      showDecorationPanel: false
+    })
+  },
   closeAllPanels() {
-    this.setData({ showBgPanel: false, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false, showDecorationPanel: false, editingTextId: '', textPanelMode: 'add' })
+    this.setData({ showBgPanel: false, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false, showDecorationPanel: false, showRectPanel: false, editingTextId: '', textPanelMode: 'add' })
+  },
+  // 矩形工具方法
+  onRectShape(e) {
+    this.setData({ rectShape: e.currentTarget.dataset.shape })
+  },
+  onRectLineStyle(e) {
+    this.setData({ rectLineStyle: e.currentTarget.dataset.style })
+  },
+  onRectStrokeWidth(e) {
+    this.setData({ rectStrokeWidth: parseInt(e.currentTarget.dataset.width) })
+  },
+  onRectFillColor(e) {
+    this.setData({ rectFillColor: e.currentTarget.dataset.color })
+  },
+  onRectStrokeColor(e) {
+    this.setData({ rectStrokeColor: e.currentTarget.dataset.color })
+  },
+  addRect() {
+    const { rectShape, rectLineStyle, rectStrokeWidth, rectFillColor, rectStrokeColor } = this.data
+    const maxZ = Math.max(0, ...this.data.elements.map(el => el.zIndex || 0))
+
+    const newRect = {
+      id: 'el_' + Date.now(),
+      type: 'decoration',
+      subType: 'rect',
+      shapeType: rectShape,
+      x: 345,
+      y: 460,
+      width: 200,
+      height: 150,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+      zIndex: maxZ + 1,
+      fillColor: rectFillColor,
+      strokeColor: rectStrokeColor,
+      strokeWidth: rectStrokeWidth,
+      lineStyle: rectLineStyle,
+      borderRadius: rectShape === 'roundRect' ? 16 : 0
+    }
+
+    const elements = [...this.data.elements, newRect]
+    this.setData({ elements, selectedId: newRect.id, selectedElement: newRect })
+    this.pushHistory()
+    this.renderCanvas()
+    this.toggleRectPanel()
+    wx.showToast({ title: '已添加矩形', icon: 'none' })
   },
 
   onTextInput(e) { this.setData({ textInput: e.detail.value }) },
-  onTextColor(e) { this.setData({ textColor: e.currentTarget.dataset.color }) },
+  onTextColor(e) {
+    const color = e.currentTarget.dataset.color
+    if (color === 'picker') {
+      // 打开调色盘
+      this.setData({ showColorPicker: true, colorPickerTarget: 'text' })
+    } else {
+      this.setData({ textColor: color })
+    }
+  },
   onTextSize(e) { this.setData({ textSize: parseInt(e.currentTarget.dataset.size) }) },
   onTextFont(e) { this.setData({ textFontFamily: e.currentTarget.dataset.font }) },
 
@@ -1776,23 +2433,117 @@ Page({
     const { bookPages, currentPageIndex, bookId } = this.data
     if (targetIndex === currentPageIndex || !bookPages[targetIndex]) return
 
-    // 同步保存（不用防抖），避免页面销毁后定时器触发
+    // 同步保存当前页
     this._syncSave()
 
-    const targetPageId = bookPages[targetIndex].id
-    const modeParam = this.data.editorMode === 'preview' ? '&mode=preview' : ''
-    wx.redirectTo({
-      url: `/pages/editor/editor?bookId=${bookId}&pageId=${targetPageId}${modeParam}`
-    })
+    // 原地切换页面，避免 redirectTo 导致的闪烁
+    this._switchToPage(bookId, bookPages[targetIndex].id, targetIndex)
   },
 
   addNewPage() {
     this._syncSave()
     const { bookId } = this.data
     const newPage = storage.createPage(bookId)
-    wx.redirectTo({
-      url: `/pages/editor/editor?bookId=${bookId}&pageId=${newPage.id}`
+    // 刷新页面列表并跳转到新页
+    const allPages = storage.getPages(bookId)
+    const newIndex = allPages.findIndex(p => p.id === newPage.id)
+    this._switchToPage(bookId, newPage.id, newIndex >= 0 ? newIndex : allPages.length - 1)
+  },
+
+  onTapPrevPage() {
+    const { currentPageIndex, bookPages, bookId } = this.data
+    if (currentPageIndex <= 0) return
+    this._syncSave()
+    this._switchToPage(bookId, bookPages[currentPageIndex - 1].id, currentPageIndex - 1)
+  },
+
+  onTapNextPage() {
+    const { currentPageIndex, bookPages, bookId } = this.data
+    if (currentPageIndex >= bookPages.length - 1) return
+    this._syncSave()
+    this._switchToPage(bookId, bookPages[currentPageIndex + 1].id, currentPageIndex + 1)
+  },
+
+  deleteCurrentPage() {
+    const { bookPages, currentPageIndex, bookId } = this.data
+    if (bookPages.length <= 1) {
+      wx.showToast({ title: '至少保留一页', icon: 'none' })
+      return
+    }
+
+    wx.showModal({
+      title: '删除此页',
+      content: '确定删除当前页面吗？此操作不可撤销。',
+      confirmColor: '#ff6b6b',
+      success: (res) => {
+        if (res.confirm) {
+          const pageId = bookPages[currentPageIndex].id
+          storage.deletePage(pageId)
+
+          // 跳转到上一页或第一页
+          const newIndex = Math.max(0, currentPageIndex - 1)
+          const remaining = storage.getPages(bookId)
+
+          if (remaining.length === 0) {
+            const newPage = storage.createPage(bookId)
+            wx.redirectTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${newPage.id}` })
+          } else {
+            wx.redirectTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${remaining[newIndex].id}` })
+          }
+        }
+      }
     })
+  },
+
+  _switchToPage(bookId, pageId, pageIndex) {
+    const page = storage.getPageById(pageId)
+    if (!page) return
+
+    // 保存当前页的历史记录
+    if (this.data.pageId && this.pageHistories) {
+      this.pageHistories.set(this.data.pageId, {
+        history: this.history,
+        historyIndex: this.historyIndex
+      })
+    }
+
+    // 清理图片缓存（仅清理当前页的图片）
+    imageCache.clear()
+
+    const allPages = storage.getPages(bookId)
+    const newIndex = allPages.findIndex(p => p.id === pageId)
+
+    // 更新数据，canvas 会自动重绘
+    this.setData({
+      pageId: page.id,
+      elements: page.elements || [],
+      background: page.background || '#FFFFFF',
+      bgPattern: page.bgPattern || 'blank',
+      bgTexture: page.bgTexture || 'none',
+      selectedId: null,
+      selectedElement: null,
+      bookPages: allPages.map((p, i) => ({ id: p.id, index: i })),
+      currentPageIndex: newIndex >= 0 ? newIndex : pageIndex,
+      stickers: storage.getStickers()
+    })
+
+    // 恢复目标页的历史记录，如果没有则初始化
+    if (!this.pageHistories) {
+      this.pageHistories = new Map()
+    }
+
+    const savedHistory = this.pageHistories.get(pageId)
+    if (savedHistory) {
+      this.history = savedHistory.history
+      this.historyIndex = savedHistory.historyIndex
+    } else {
+      this.history = [JSON.parse(JSON.stringify(page.elements || []))]
+      this.historyIndex = 0
+    }
+    this.updateHistoryState()
+
+    // 触发重绘
+    this.renderCanvas()
   },
 
   toggleEditorMode() {
@@ -1886,7 +2637,7 @@ Page({
   // 同步保存（无防抖），用于页面跳转前
   _syncSave() {
     if (this._saveTimer) clearTimeout(this._saveTimer)
-    const { pageId, elements, background, bgPattern } = this.data
-    if (pageId) storage.updatePage(pageId, { elements, background, bgPattern })
+    const { pageId, elements, background, bgPattern, bgTexture } = this.data
+    if (pageId) storage.updatePage(pageId, { elements, background, bgPattern, bgTexture })
   }
 })

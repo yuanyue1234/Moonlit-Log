@@ -27,25 +27,30 @@
   <scroll-view scroll-y class="book-list" enhanced show-scrollbar="{{false}}">
     <view class="book-grid">
       <view
-        class="book-card {{flippedBookId === item.id ? 'flipping' : ''}}"
+        class="book-card"
         wx:for="{{books}}"
         wx:key="id"
         bindtap="onTapBook"
         data-id="{{item.id}}"
         bindlongpress="onLongPressBook"
-        style="animation-delay: {{index * 0.08}}s"
       >
         <view class="book-cover" style="background: linear-gradient(135deg, {{item.themeInfo.primary}}22, {{item.themeInfo.secondary}}22);">
-          <view class="cover-line-art">
-            <view class="cover-spine"></view>
-            <view class="cover-page-line line-a"></view>
-            <view class="cover-page-line line-b"></view>
-            <view class="cover-page-line line-c"></view>
-          </view>
+          <image wx:if="{{item.coverImage}}" class="cover-image" src="{{item.coverImage}}" mode="aspectFill" />
+          <block wx:else>
+            <view class="cover-line-art">
+              <view class="cover-spine"></view>
+              <view class="cover-page-line line-a"></view>
+              <view class="cover-page-line line-b"></view>
+              <view class="cover-page-line line-c"></view>
+            </view>
+          </block>
           <view class="cover-theme-tag tag">{{item.themeInfo.name}}</view>
         </view>
         <view class="book-info">
           <view class="book-name">{{item.name}}</view>
+          <view class="book-tags" wx:if="{{item.tags && item.tags.length > 0}}">
+            <text class="book-tag" wx:for="{{item.tags}}" wx:key="*this" wx:for-item="tag">{{tag}}</text>
+          </view>
           <view class="book-meta">
             <text class="book-pages">{{item.pageCount}} 页</text>
             <text class="book-time code-chip">{{item.themeInfo.name}}</text>
@@ -56,10 +61,6 @@
         </view>
       </view>
 
-      <view class="book-card book-card-new" bindtap="onTapCreate">
-        <view class="new-icon">+</view>
-        <view class="new-text">新建手帐本</view>
-      </view>
     </view>
     <view style="height: 120rpx;"></view>
   </scroll-view>
@@ -125,6 +126,25 @@
             bindinput="onInputName"
             maxlength="20"
           />
+        </view>
+        <view class="input-group">
+          <text class="input-label">封面图片</text>
+          <view class="cover-picker" bindtap="onChooseCover">
+            <image wx:if="{{editingCoverImage}}" class="cover-preview" src="{{editingCoverImage}}" mode="aspectFill" />
+            <view wx:else class="cover-placeholder">
+              <text>点击选择封面</text>
+            </view>
+          </view>
+        </view>
+        <view class="input-group">
+          <text class="input-label">标签</text>
+          <view class="tags-editor">
+            <view class="tag-chip" wx:for="{{editingTags}}" wx:key="*this">
+              <text>{{item}}</text>
+              <text class="tag-remove" catchtap="onRemoveTag" data-index="{{index}}">×</text>
+            </view>
+            <input class="tag-input" placeholder="输入标签回车添加" placeholder-class="input-placeholder" value="{{newTagInput}}" bindinput="onTagInput" bindconfirm="onAddTag" />
+          </view>
         </view>
         <view class="input-group">
           <text class="input-label">主题风格</text>

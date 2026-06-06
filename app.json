@@ -7,16 +7,16 @@
     "pages/templates/templates"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#101010",
+    "navigationBarBackgroundColor": "#1a1a1a",
     "navigationBarTitleText": "我的手帐",
     "navigationBarTextStyle": "white",
-    "backgroundColor": "#101010",
+    "backgroundColor": "#1a1a1a",
     "backgroundTextStyle": "light"
   },
   "tabBar": {
     "color": "#8b949e",
     "selectedColor": "#00d992",
-    "backgroundColor": "#101010",
+    "backgroundColor": "#1a1a1a",
     "borderStyle": "black",
     "list": [
       {
@@ -30,12 +30,6 @@
         "text": "贴纸",
         "iconPath": "images/tab-sticker.png",
         "selectedIconPath": "images/tab-sticker-active.png"
-      },
-      {
-        "pagePath": "pages/extract/extract",
-        "text": "提取",
-        "iconPath": "images/tab-extract.png",
-        "selectedIconPath": "images/tab-extract-active.png"
       }
     ]
   },

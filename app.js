@@ -1,8 +1,27 @@
 // app.js - 我的手帐小程序
+const fileUtil = require('./utils/file')
+
 App({
   onLaunch() {
     this.initStorage()
     this.loadFonts()
+    this.scheduleCleanup()
+  },
+
+  // 定期清理未使用的文件（每天最多一次）
+  scheduleCleanup() {
+    const lastCleanup = wx.getStorageSync('last_file_cleanup') || 0
+    const now = Date.now()
+    const oneDay = 24 * 60 * 60 * 1000
+
+    if (now - lastCleanup > oneDay) {
+      fileUtil.cleanupUnusedFiles().then(result => {
+        wx.setStorageSync('last_file_cleanup', now)
+        if (result.deleted > 0) {
+          console.log(`[cleanup] 清理了 ${result.deleted} 个未使用文件`)
+        }
+      })
+    }
   },
 
   loadFonts() {

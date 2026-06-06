@@ -14,7 +14,11 @@ Page({
     pageReady: false,
     flippedBookId: null,
     keyboardHeight: 0,
-    lastEditedBook: null
+    lastEditedBook: null,
+    // 封面和标签
+    editingCoverImage: '',
+    editingTags: [],
+    newTagInput: ''
   },
 
   onLoad() {
@@ -72,24 +76,20 @@ Page({
     this.onTapBook({ currentTarget: { dataset: { id: lastEditedBook.id } } })
   },
 
-  // 点击手账本 - 打开最后一页（参考 wanru-mini）
+  // 点击手账本 - 打开最后一页（无动画）
   onTapBook(e) {
     const bookId = e.currentTarget.dataset.id
-    this.setData({ flippedBookId: bookId })
 
-    setTimeout(() => {
-      // 获取该手账本的所有页面，打开最后一页
-      const pages = storage.getPages(bookId)
-      if (pages.length > 0) {
-        const lastPage = pages[pages.length - 1]
-        wx.navigateTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${lastPage.id}` })
-      } else {
-        // 没有页面时创建新页面再打开
-        const newPage = storage.createPage(bookId)
-        wx.navigateTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${newPage.id}` })
-      }
-      this.setData({ flippedBookId: null })
-    }, 500)
+    // 获取该手账本的所有页面，打开最后一页
+    const pages = storage.getPages(bookId)
+    if (pages.length > 0) {
+      const lastPage = pages[pages.length - 1]
+      wx.navigateTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${lastPage.id}` })
+    } else {
+      // 没有页面时创建新页面再打开
+      const newPage = storage.createPage(bookId)
+      wx.navigateTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${newPage.id}` })
+    }
   },
 
   // 创建手账本
@@ -124,15 +124,68 @@ Page({
     if (book) {
       this.setData({
         showEditModal: true, editingBook: book,
-        newBookName: book.name, selectedTheme: book.theme
+        newBookName: book.name, selectedTheme: book.theme,
+        editingCoverImage: book.coverImage || '',
+        editingTags: book.tags ? [...book.tags] : [],
+        newTagInput: ''
       })
     }
   },
 
+  onChooseCover() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album'],
+      success: (res) => {
+        const tempPath = res.tempFiles[0].tempFilePath
+        // 持久化文件
+        const fileUtil = require('../../utils/file')
+        fileUtil.persistFile(tempPath).then(savedSrc => {
+          this.setData({ editingCoverImage: savedSrc })
+        }).catch(() => {
+          this.setData({ editingCoverImage: tempPath })
+        })
+      }
+    })
+  },
+
+  onTagInput(e) {
+    this.setData({ newTagInput: e.detail.value })
+  },
+
+  onAddTag() {
+    const tag = this.data.newTagInput.trim()
+    if (!tag) return
+    const tags = [...this.data.editingTags]
+    if (tags.includes(tag)) {
+      wx.showToast({ title: '标签已存在', icon: 'none' })
+      return
+    }
+    if (tags.length >= 5) {
+      wx.showToast({ title: '最多5个标签', icon: 'none' })
+      return
+    }
+    tags.push(tag)
+    this.setData({ editingTags: tags, newTagInput: '' })
+  },
+
+  onRemoveTag(e) {
+    const index = e.currentTarget.dataset.index
+    const tags = [...this.data.editingTags]
+    tags.splice(index, 1)
+    this.setData({ editingTags: tags })
+  },
+
   onConfirmEdit() {
-    const { editingBook, newBookName, selectedTheme } = this.data
+    const { editingBook, newBookName, selectedTheme, editingCoverImage, editingTags } = this.data
     if (editingBook) {
-      storage.updateBook(editingBook.id, { name: newBookName.trim() || editingBook.name, theme: selectedTheme })
+      storage.updateBook(editingBook.id, {
+        name: newBookName.trim() || editingBook.name,
+        theme: selectedTheme,
+        coverImage: editingCoverImage,
+        tags: editingTags
+      })
       this.setData({ showEditModal: false, editingBook: null })
       this.loadBooks()
       wx.showToast({ title: '已更新', icon: 'none' })

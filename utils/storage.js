@@ -176,6 +176,18 @@ function updateSticker(stickerId, data) {
 
 function deleteSticker(stickerId) {
   let stickers = wx.getStorageSync(STORAGE_KEYS.STICKERS) || []
+  const sticker = stickers.find(s => s.id === stickerId)
+
+  // 删除关联的文件
+  if (sticker && sticker.src && sticker.src.indexOf(wx.env.USER_DATA_PATH) === 0) {
+    try {
+      const fs = wx.getFileSystemManager()
+      fs.unlinkSync(sticker.src)
+    } catch (e) {
+      // 文件可能已被删除或正在使用
+    }
+  }
+
   stickers = stickers.filter(s => s.id !== stickerId)
   wx.setStorageSync(STORAGE_KEYS.STICKERS, stickers)
 }

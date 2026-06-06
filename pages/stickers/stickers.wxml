@@ -6,7 +6,7 @@
         <view class="page-title">我的贴纸</view>
       </view>
       <view class="header-actions">
-        <view class="btn btn-small btn-secondary" bindtap="onTapEdit">{{isEditing ? '完成' : '编辑'}}</view>
+        <view class="btn btn-small btn-secondary" bindtap="onTapSort">排序</view>
         <view class="btn btn-small btn-primary" bindtap="onTapAdd">添加</view>
       </view>
     </view>
@@ -22,28 +22,73 @@
   </scroll-view>
 
   <scroll-view scroll-y class="sticker-list" enhanced show-scrollbar="{{false}}">
-    <view class="sticker-grid" wx:if="{{!isEmpty}}">
-      <view class="sticker-card effect-{{item.effect || 'none'}}" wx:for="{{filteredStickers}}" wx:key="id" bindtap="onTapSticker" data-id="{{item.id}}">
-        <image src="{{item.src}}" mode="aspectFit" class="sticker-image" />
-        <view class="sticker-overlay" wx:if="{{isEditing}}">
-          <view class="edit-pill" catchtap="toggleFavorite" data-id="{{item.id}}">{{item.isFavorite ? '已收藏' : '收藏'}}</view>
-          <view class="edit-pill danger" catchtap="onTapDelete" data-id="{{item.id}}">删除</view>
+    <view class="masonry" wx:if="{{!isEmpty}}">
+      <view class="masonry-col">
+        <view class="masonry-item {{selectedStickerId === item.id ? 'selected' : ''}}" wx:for="{{colLeft}}" wx:key="id"
+          bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview" data-id="{{item.id}}">
+          <image src="{{item.src}}" mode="widthFix" class="masonry-img effect-{{item.effect || 'none'}}" />
+          <view class="quick-actions" wx:if="{{selectedStickerId === item.id}}" catchtap="stopPropagation">
+            <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">
+              <text>{{item.isFavorite ? '★' : '☆'}}</text>
+            </view>
+            <view class="quick-btn" catchtap="quickAddToBook" data-id="{{item.id}}">
+              <text>+</text>
+            </view>
+            <view class="quick-btn danger" catchtap="quickDelete" data-id="{{item.id}}">
+              <text>×</text>
+            </view>
+          </view>
+          <view class="masonry-badge" wx:if="{{item.isFavorite && selectedStickerId !== item.id}}">收藏</view>
         </view>
-        <view class="sticker-badge" wx:if="{{item.isFavorite && !isEditing}}">收藏</view>
+      </view>
+      <view class="masonry-col">
+        <view class="masonry-item {{selectedStickerId === item.id ? 'selected' : ''}}" wx:for="{{colRight}}" wx:key="id"
+          bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview" data-id="{{item.id}}">
+          <image src="{{item.src}}" mode="widthFix" class="masonry-img effect-{{item.effect || 'none'}}" />
+          <view class="quick-actions" wx:if="{{selectedStickerId === item.id}}" catchtap="stopPropagation">
+            <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">
+              <text>{{item.isFavorite ? '★' : '☆'}}</text>
+            </view>
+            <view class="quick-btn" catchtap="quickAddToBook" data-id="{{item.id}}">
+              <text>+</text>
+            </view>
+            <view class="quick-btn danger" catchtap="quickDelete" data-id="{{item.id}}">
+              <text>×</text>
+            </view>
+          </view>
+          <view class="masonry-badge" wx:if="{{item.isFavorite && selectedStickerId !== item.id}}">收藏</view>
+        </view>
       </view>
     </view>
 
     <view class="empty-state" wx:if="{{isEmpty}}">
       <view class="empty-text">还没有贴纸</view>
-      <view class="empty-hint">从相册添加，或到“提取”页生成去背景贴纸。</view>
+      <view class="empty-hint">从相册添加贴纸素材。</view>
       <view class="btn btn-primary empty-action" bindtap="onTapAdd">添加贴纸</view>
     </view>
     <view class="safe-spacer"></view>
   </scroll-view>
 
+  <!-- 手账本选择弹窗 -->
+  <view class="preview-mask {{showBookPicker ? 'show' : ''}}" bindtap="closeBookPicker">
+    <view class="book-picker" catchtap="stopPropagation" wx:if="{{showBookPicker}}">
+      <view class="picker-title">选择手账本</view>
+      <scroll-view scroll-y class="picker-list">
+        <view class="picker-item" wx:for="{{books}}" wx:key="id" bindtap="onPickBook" data-book-id="{{item.id}}">
+          <text class="picker-name">{{item.name}}</text>
+        </view>
+      </scroll-view>
+      <view class="picker-close" bindtap="closeBookPicker">取消</view>
+    </view>
+  </view>
+
+  <!-- 贴纸预览 - 全屏样式 -->
   <view class="preview-mask {{showPreview ? 'show' : ''}}" bindtap="closePreview">
     <view class="preview-container" catchtap="stopPropagation" wx:if="{{previewSticker}}">
       <image src="{{previewSticker.src}}" mode="aspectFit" class="preview-image effect-{{previewSticker.effect || 'none'}}" />
+
+      <!-- 关闭按钮 - 在信息栏上方 -->
+      <view class="preview-close" bindtap="closePreview">关闭</view>
 
       <view class="preview-info">
         <view class="preview-title">贴纸详情</view>
@@ -60,8 +105,6 @@
           <view class="preview-btn danger" bindtap="previewDelete">删除</view>
         </view>
       </view>
-
-      <view class="preview-close" bindtap="closePreview">关闭</view>
     </view>
   </view>
 </view>

@@ -11,27 +11,24 @@
     </view>
 
     <view class="top-right">
-      <view class="mode-toggle {{editorMode === 'preview' ? 'active' : ''}}" bindtap="toggleEditorMode">
-        <image class="ui-icon" src="{{editorMode === 'preview' ? '/assets/icons/edit-3.svg' : '/assets/icons/book-open.svg'}}" mode="aspectFit" />
-        <text>{{editorMode === 'preview' ? '编辑' : '预览'}}</text>
-      </view>
       <view class="icon-btn {{!canUndo ? 'disabled' : ''}}" bindtap="onTapAction" data-action="undo" aria-label="撤销">
         <image class="ui-icon" src="/assets/icons/undo.svg" mode="aspectFit" />
       </view>
       <view class="icon-btn {{!canRedo ? 'disabled' : ''}}" bindtap="onTapAction" data-action="redo" aria-label="重做">
         <image class="ui-icon" src="/assets/icons/redo.svg" mode="aspectFit" />
       </view>
-      <view class="icon-btn" bindtap="onTapAction" data-action="save" aria-label="保存">
-        <image class="ui-icon" src="/assets/icons/save.svg" mode="aspectFit" />
+      <view class="icon-btn" bindtap="toggleMoreMenu" aria-label="更多">
+        <image class="ui-icon" src="/assets/icons/more-horizontal.svg" mode="aspectFit" />
       </view>
-      <view class="icon-btn export-btn" bindtap="onTapAction" data-action="export" aria-label="导出">
-        <image class="ui-icon" src="/assets/icons/download.svg" mode="aspectFit" />
+      <view class="mode-toggle {{editorMode === 'preview' ? 'active' : ''}}" bindtap="toggleEditorMode">
+        <image class="ui-icon" src="{{editorMode === 'preview' ? '/assets/icons/edit-3.svg' : '/assets/icons/book-open.svg'}}" mode="aspectFit" />
+        <text>{{editorMode === 'preview' ? '编辑' : '预览'}}</text>
       </view>
     </view>
   </view>
 
   <view class="canvas-wrapper" bindtap="closeAllPanels">
-    <view class="page-shell {{flipClass}}" bindtouchstart="onPreviewTouchStart" bindtouchmove="onPreviewTouchMove" bindtouchend="onPreviewTouchEnd">
+    <view class="page-shell">
       <view class="canvas-container paper-canvas" style="width: {{pageWidth}}rpx; height: {{pageHeight}}rpx;">
         <canvas
           id="editorCanvas"
@@ -44,61 +41,55 @@
           disable-scroll
         ></canvas>
       </view>
-      <view
-        class="flip-layer {{flipState}} {{flipDirection}}"
-        wx:if="{{editorMode === 'preview' && flipState !== 'idle'}}"
-        style="width: {{pageWidth}}rpx; height: {{pageHeight}}rpx; transform: {{flipTransform}}; transform-origin: {{flipDirection === 'next' ? 'left center' : 'right center'}};"
-      >
-        <view class="flip-paper-grain"></view>
-        <view class="flip-paper-lines"></view>
-        <view class="flip-inner-shadow" style="opacity: {{flipShadowOpacity}};"></view>
-        <view class="flip-edge-shadow" style="opacity: {{flipShadowOpacity}};"></view>
-      </view>
     </view>
   </view>
 
   <view class="selection-toolbar" wx:if="{{selectedId && editorMode === 'edit'}}">
-    <view class="sel-btn" bindtap="duplicateSelected">
+    <view class="sel-btn" bindtap="duplicateSelected" data-tooltip="复制">
       <image class="ui-icon" src="/assets/icons/copy.svg" mode="aspectFit" />
-      <text>复制</text>
     </view>
-    <view class="sel-btn {{selectedElement.effect === 'paper' ? 'active' : ''}} {{selectedElement.locked ? 'disabled' : ''}}" wx:if="{{selectedElement.type === 'image'}}" bindtap="setSelectedEffect" data-effect="{{selectedElement.effect === 'paper' ? 'none' : 'paper'}}">
+    <view class="sel-btn {{selectedElement.effect === 'paper' ? 'active' : ''}} {{selectedElement.locked ? 'disabled' : ''}}" wx:if="{{selectedElement.type === 'image'}}" bindtap="setSelectedEffect" data-effect="{{selectedElement.effect === 'paper' ? 'none' : 'paper'}}" data-tooltip="纸边">
       <image class="ui-icon" src="/assets/icons/file-text.svg" mode="aspectFit" />
-      <text>纸边</text>
     </view>
-    <view class="sel-btn" wx:if="{{selectedElement.type === 'text'}}" bindtap="openSelectedTextEditor">
+    <view class="sel-btn" wx:if="{{selectedElement.type === 'text'}}" bindtap="openSelectedTextEditor" data-tooltip="编辑">
       <image class="ui-icon" src="/assets/icons/type.svg" mode="aspectFit" />
-      <text>编辑</text>
     </view>
-    <view class="sel-btn {{selectedElement.locked ? 'active' : ''}}" bindtap="toggleSelectedLock">
+    <view class="sel-btn {{selectedElement.locked ? 'active' : ''}}" bindtap="toggleSelectedLock" data-tooltip="{{selectedElement.locked ? '解锁' : '锁定'}}">
       <image class="ui-icon" src="{{selectedElement.locked ? '/assets/icons/unlock.svg' : '/assets/icons/lock.svg'}}" mode="aspectFit" />
-      <text>{{selectedElement.locked ? '解锁' : '锁定'}}</text>
     </view>
-    <view class="sel-btn" bindtap="bringToFront">
-      <image class="ui-icon" src="/assets/icons/layers.svg" mode="aspectFit" />
-      <text>置顶</text>
-    </view>
-    <view class="sel-btn" bindtap="sendToBack">
-      <image class="ui-icon" src="/assets/icons/layers.svg" mode="aspectFit" />
-      <text>置底</text>
-    </view>
-    <view class="sel-btn" bindtap="openSelectedMoreMenu">
-      <image class="ui-icon" src="/assets/icons/more-horizontal.svg" mode="aspectFit" />
-      <text>更多</text>
-    </view>
-    <view class="sel-btn danger {{selectedElement.locked ? 'disabled' : ''}}" bindtap="deleteSelected">
+    <view class="sel-btn danger {{selectedElement.locked ? 'disabled' : ''}}" bindtap="deleteSelected" data-tooltip="删除">
       <image class="ui-icon" src="/assets/icons/trash-2.svg" mode="aspectFit" />
-      <text>删除</text>
+    </view>
+    <view class="sel-btn" bindtap="openSelectedMoreMenu" data-tooltip="更多">
+      <image class="ui-icon" src="/assets/icons/more-horizontal.svg" mode="aspectFit" />
     </view>
   </view>
 
   <view class="page-dots-bar" wx:if="{{bookPages.length > 0}}">
+    <view class="page-nav-controls">
+      <view class="page-nav-btn {{currentPageIndex <= 0 ? 'disabled' : ''}}" bindtap="onTapPrevPage" aria-label="上一页">
+        <image class="ui-icon" src="/assets/icons/chevron-left.svg" mode="aspectFit" />
+      </view>
+      <view class="page-nav-info">
+        <text class="page-nav-current">{{currentPageIndex + 1}}</text>
+        <text class="page-nav-separator">/</text>
+        <text class="page-nav-total">{{bookPages.length}}</text>
+      </view>
+      <view class="page-nav-btn {{currentPageIndex >= bookPages.length - 1 ? 'disabled' : ''}}" bindtap="onTapNextPage" aria-label="下一页">
+        <image class="ui-icon" src="/assets/icons/chevron-right.svg" mode="aspectFit" />
+      </view>
+      <view class="page-nav-btn" bindtap="addNewPage" aria-label="添加下一页">
+        <image class="ui-icon" src="/assets/icons/plus.svg" mode="aspectFit" />
+      </view>
+      <view class="page-nav-btn danger" bindtap="deleteCurrentPage" aria-label="删除此页" wx:if="{{bookPages.length > 1}}">
+        <image class="ui-icon" src="/assets/icons/trash-2.svg" mode="aspectFit" />
+      </view>
+    </view>
     <scroll-view scroll-x class="dots-scroll" enhanced show-scrollbar="{{false}}">
       <view class="dots-row">
         <view class="page-dot {{currentPageIndex === index ? 'active' : ''}}" wx:for="{{bookPages}}" wx:key="id" data-index="{{index}}" bindtap="onTapPageDot">
           {{index + 1}}
         </view>
-        <view class="page-dot add-dot" bindtap="addNewPage" wx:if="{{editorMode === 'edit'}}">+</view>
       </view>
     </scroll-view>
   </view>
@@ -111,6 +102,10 @@
     <view class="tool-btn {{showTextPanel ? 'active' : ''}}" bindtap="toggleTextPanel">
       <image class="ui-icon" src="/assets/icons/type.svg" mode="aspectFit" />
       <text>文字</text>
+    </view>
+    <view class="tool-btn {{showRectPanel ? 'active' : ''}}" bindtap="toggleRectPanel">
+      <image class="ui-icon" src="/assets/icons/square.svg" mode="aspectFit" />
+      <text>矩形</text>
     </view>
     <view class="tool-btn" bindtap="addFromAlbum">
       <image class="ui-icon" src="/assets/icons/image.svg" mode="aspectFit" />
@@ -173,20 +168,90 @@
       <text class="eyebrow">颜色</text>
       <scroll-view scroll-x class="color-scroll" enhanced show-scrollbar="{{false}}">
         <view class="color-list">
-          <view class="color-item {{textColor === item ? 'active' : ''}}" wx:for="{{textColors}}" wx:key="*this" style="background: {{item}};" bindtap="onTextColor" data-color="{{item}}"></view>
-        </view>
-      </scroll-view>
-
-      <text class="eyebrow">字号</text>
-      <scroll-view scroll-x class="size-scroll" enhanced show-scrollbar="{{false}}">
-        <view class="size-list">
-          <view class="size-item {{textSize === item ? 'active' : ''}}" wx:for="{{textSizes}}" wx:key="*this" bindtap="onTextSize" data-size="{{item}}">
-            {{item}}
-          </view>
+          <block wx:for="{{textColors}}" wx:key="*this">
+            <view wx:if="{{item === 'picker'}}" class="color-item color-picker-btn" bindtap="onTextColor" data-color="picker">
+              <text class="picker-icon">+</text>
+            </view>
+            <view wx:else class="color-item {{textColor === item ? 'active' : ''}}" style="background: {{item}};" bindtap="onTextColor" data-color="{{item}}"></view>
+          </block>
         </view>
       </scroll-view>
 
       <view class="btn btn-primary" bindtap="addText">{{textPanelMode === 'edit' ? '保存文字' : '添加到画布'}}</view>
+    </view>
+  </view>
+
+  <!-- 矩形面板 -->
+  <view class="panel {{showRectPanel ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="panel-header">
+      <text class="panel-title">添加矩形</text>
+      <view class="panel-close" bindtap="toggleRectPanel">
+        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+    </view>
+    <view class="panel-body">
+      <text class="eyebrow">形状</text>
+      <view class="rect-shape-list">
+        <view class="rect-shape-item {{rectShape === 'rect' ? 'active' : ''}}" bindtap="onRectShape" data-shape="rect">
+          <view class="shape-preview shape-rect"></view>
+          <text>矩形</text>
+        </view>
+        <view class="rect-shape-item {{rectShape === 'roundRect' ? 'active' : ''}}" bindtap="onRectShape" data-shape="roundRect">
+          <view class="shape-preview shape-roundrect"></view>
+          <text>圆角</text>
+        </view>
+        <view class="rect-shape-item {{rectShape === 'circle' ? 'active' : ''}}" bindtap="onRectShape" data-shape="circle">
+          <view class="shape-preview shape-circle"></view>
+          <text>圆形</text>
+        </view>
+        <view class="rect-shape-item {{rectShape === 'ellipse' ? 'active' : ''}}" bindtap="onRectShape" data-shape="ellipse">
+          <view class="shape-preview shape-ellipse"></view>
+          <text>椭圆</text>
+        </view>
+      </view>
+
+      <text class="eyebrow">线条样式</text>
+      <view class="rect-line-list">
+        <view class="rect-line-item {{rectLineStyle === 'solid' ? 'active' : ''}}" bindtap="onRectLineStyle" data-style="solid">
+          <view class="line-preview line-solid"></view>
+          <text>实线</text>
+        </view>
+        <view class="rect-line-item {{rectLineStyle === 'dashed' ? 'active' : ''}}" bindtap="onRectLineStyle" data-style="dashed">
+          <view class="line-preview line-dashed"></view>
+          <text>虚线</text>
+        </view>
+        <view class="rect-line-item {{rectLineStyle === 'dotted' ? 'active' : ''}}" bindtap="onRectLineStyle" data-style="dotted">
+          <view class="line-preview line-dotted"></view>
+          <text>点线</text>
+        </view>
+      </view>
+
+      <text class="eyebrow">线条粗细</text>
+      <view class="rect-width-list">
+        <view class="rect-width-item {{rectStrokeWidth === 1 ? 'active' : ''}}" bindtap="onRectStrokeWidth" data-width="1">1px</view>
+        <view class="rect-width-item {{rectStrokeWidth === 2 ? 'active' : ''}}" bindtap="onRectStrokeWidth" data-width="2">2px</view>
+        <view class="rect-width-item {{rectStrokeWidth === 4 ? 'active' : ''}}" bindtap="onRectStrokeWidth" data-width="4">4px</view>
+        <view class="rect-width-item {{rectStrokeWidth === 8 ? 'active' : ''}}" bindtap="onRectStrokeWidth" data-width="8">8px</view>
+      </view>
+
+      <text class="eyebrow">填充颜色</text>
+      <scroll-view scroll-x class="color-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="color-list">
+          <view class="color-item {{rectFillColor === 'transparent' ? 'active' : ''}}" style="background: transparent; border: 2rpx dashed #666;" bindtap="onRectFillColor" data-color="transparent">
+            <text style="font-size: 16rpx; color: #666;">无</text>
+          </view>
+          <view class="color-item {{rectFillColor === item ? 'active' : ''}}" wx:for="{{rectFillColors}}" wx:key="*this" style="background: {{item}};" bindtap="onRectFillColor" data-color="{{item}}"></view>
+        </view>
+      </scroll-view>
+
+      <text class="eyebrow">描边颜色</text>
+      <scroll-view scroll-x class="color-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="color-list">
+          <view class="color-item {{rectStrokeColor === item ? 'active' : ''}}" wx:for="{{rectStrokeColors}}" wx:key="*this" style="background: {{item}};" bindtap="onRectStrokeColor" data-color="{{item}}"></view>
+        </view>
+      </scroll-view>
+
+      <view class="btn btn-primary" bindtap="addRect">添加到画布</view>
     </view>
   </view>
 
@@ -201,14 +266,45 @@
       <text class="eyebrow">颜色</text>
       <view class="bg-color-grid">
         <view class="bg-color-item {{background === item ? 'active' : ''}}" wx:for="{{bgColors}}" wx:key="*this" style="background: {{item}};" bindtap="onChangeBackground" data-color="{{item}}"></view>
+        <view class="bg-color-item color-picker-btn" bindtap="onChangeBackground" data-color="picker">
+          <text class="picker-icon">+</text>
+        </view>
       </view>
 
-      <text class="eyebrow">纸面</text>
+      <text class="eyebrow">纸面纹路</text>
       <view class="pattern-list">
         <view class="pattern-item {{bgPattern === 'blank' ? 'active' : ''}}" bindtap="onChangePattern" data-pattern="blank">空白</view>
         <view class="pattern-item {{bgPattern === 'dots' ? 'active' : ''}}" bindtap="onChangePattern" data-pattern="dots">点阵</view>
         <view class="pattern-item {{bgPattern === 'lines' ? 'active' : ''}}" bindtap="onChangePattern" data-pattern="lines">横线</view>
         <view class="pattern-item {{bgPattern === 'grid' ? 'active' : ''}}" bindtap="onChangePattern" data-pattern="grid">网格</view>
+      </view>
+
+      <text class="eyebrow">纸面材质</text>
+      <view class="paper-texture-list">
+        <view class="paper-texture-item {{bgTexture === 'none' ? 'active' : ''}}" bindtap="onChangeTexture" data-texture="none">
+          <view class="texture-preview texture-none"></view>
+          <text>光滑</text>
+        </view>
+        <view class="paper-texture-item {{bgTexture === 'grain' ? 'active' : ''}}" bindtap="onChangeTexture" data-texture="grain">
+          <view class="texture-preview texture-grain"></view>
+          <text>纸纹</text>
+        </view>
+        <view class="paper-texture-item {{bgTexture === 'canvas' ? 'active' : ''}}" bindtap="onChangeTexture" data-texture="canvas">
+          <view class="texture-preview texture-canvas"></view>
+          <text>画布</text>
+        </view>
+        <view class="paper-texture-item {{bgTexture === 'kraft' ? 'active' : ''}}" bindtap="onChangeTexture" data-texture="kraft">
+          <view class="texture-preview texture-kraft"></view>
+          <text>牛皮纸</text>
+        </view>
+        <view class="paper-texture-item {{bgTexture === 'linen' ? 'active' : ''}}" bindtap="onChangeTexture" data-texture="linen">
+          <view class="texture-preview texture-linen"></view>
+          <text>亚麻</text>
+        </view>
+        <view class="paper-texture-item {{bgTexture === 'watercolor' ? 'active' : ''}}" bindtap="onChangeTexture" data-texture="watercolor">
+          <view class="texture-preview texture-watercolor"></view>
+          <text>水彩</text>
+        </view>
       </view>
     </view>
   </view>
@@ -240,4 +336,37 @@
   </view>
 
   <view class="panel-mask {{showBgPanel || showStickerPanel || showTextPanel || showTemplatePanel ? 'show' : ''}}" bindtap="closeAllPanels"></view>
+
+  <!-- 调色盘弹窗 -->
+  <view class="color-picker-mask {{showColorPicker ? 'show' : ''}}" bindtap="closeColorPicker">
+    <view class="color-picker-modal" catchtap="stopPropagation">
+      <view class="color-picker-header">
+        <text class="color-picker-title">选择颜色</text>
+        <view class="color-picker-close" bindtap="closeColorPicker">
+          <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+        </view>
+      </view>
+      <view class="color-picker-body">
+        <view class="color-preview" style="background: {{colorPickerTarget === 'text' ? textColor : background}};"></view>
+        <view class="color-slider-group">
+          <view class="slider-row">
+            <text class="slider-label">色相</text>
+            <slider class="color-slider hue-slider" min="0" max="360" value="{{colorPickerHue}}" bindchange="onColorPickerHueChange" activeColor="#ff0000" />
+          </view>
+          <view class="slider-row">
+            <text class="slider-label">饱和度</text>
+            <slider class="color-slider" min="0" max="100" value="{{colorPickerSaturation}}" bindchange="onColorPickerSatChange" activeColor="#888" />
+          </view>
+          <view class="slider-row">
+            <text class="slider-label">明度</text>
+            <slider class="color-slider" min="0" max="100" value="{{colorPickerValue}}" bindchange="onColorPickerValChange" activeColor="#888" />
+          </view>
+        </view>
+        <view class="color-picker-actions">
+          <view class="btn btn-secondary" bindtap="closeColorPicker">取消</view>
+          <view class="btn btn-primary" bindtap="confirmColorPicker">确定</view>
+        </view>
+      </view>
+    </view>
+  </view>
 </view>
