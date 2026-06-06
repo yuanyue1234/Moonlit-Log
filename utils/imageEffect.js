@@ -1,4 +1,4 @@
-// utils/imageEffect.js - alpha-mask based sticker effects for canvas
+﻿// utils/imageEffect.js - alpha-mask based sticker effects for canvas
 
 const maskCache = new Map()
 
@@ -77,11 +77,11 @@ function drawAlphaGlow(ctx, image, x, y, width, height, color, blur) {
 }
 
 function drawImageEffect(ctx, src, image, x, y, width, height, effect) {
-  if (!effect || effect === 'none') return
+  if (!effect || effect === 'none') return false
 
   if (effect === 'shadow') {
     drawSubjectShadow(ctx, image, x, y, width, height)
-    return
+    return true
   }
 
   if (effect === 'white-border') {
@@ -91,8 +91,11 @@ function drawImageEffect(ctx, src, image, x, y, width, height, effect) {
       step: 3,
       shadow: { color: 'rgba(0,0,0,0.16)', blur: 8, offsetY: 3 }
     })
-    if (!ok) drawAlphaGlow(ctx, image, x, y, width, height, '#ffffff', 12)
-    return
+    if (!ok) {
+      drawAlphaGlow(ctx, image, x, y, width, height, '#ffffff', 12)
+      return true
+    }
+    return false
   }
 
   if (effect === 'paper') {
@@ -102,8 +105,14 @@ function drawImageEffect(ctx, src, image, x, y, width, height, effect) {
       step: 4,
       shadow: { color: 'rgba(0,0,0,0.24)', blur: 16, offsetY: 8 }
     })
-    if (!ok) drawAlphaGlow(ctx, image, x, y, width, height, '#fffaf0', 18)
+    if (!ok) {
+      drawAlphaGlow(ctx, image, x, y, width, height, '#fffaf0', 18)
+      return true
+    }
+    return false
   }
+
+  return false
 }
 
 function clearEffectCache() {

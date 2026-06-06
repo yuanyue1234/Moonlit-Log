@@ -1,4 +1,4 @@
-/**
+﻿/**
  * storage.js - 数据存储管理
  * 所有本地数据的增删改查
  */
@@ -66,6 +66,16 @@ function getPages(bookId) {
   return bookId ? allPages.filter(p => p.bookId === bookId) : allPages
 }
 
+// 批量获取所有手账本的页数（优化N+1查询）
+function getBookPageCounts() {
+  const allPages = wx.getStorageSync(STORAGE_KEYS.PAGES) || []
+  const counts = {}
+  allPages.forEach(page => {
+    counts[page.bookId] = (counts[page.bookId] || 0) + 1
+  })
+  return counts
+}
+
 function savePages(pages) {
   wx.setStorageSync(STORAGE_KEYS.PAGES, pages)
 }
@@ -94,6 +104,7 @@ function createPage(bookId, data = {}) {
   const books = getBooks()
   const book = books.find(b => b.id === bookId)
   if (book) {
+    book.pages = book.pages || []
     book.pages.push(newPage.id)
     book.updatedAt = Date.now()
     saveBooks(books)
@@ -184,7 +195,7 @@ function deleteSticker(stickerId) {
       const fs = wx.getFileSystemManager()
       fs.unlinkSync(sticker.src)
     } catch (e) {
-      // 文件可能已被删除或正在使用
+      console.warn('删除贴纸文件失败:', sticker.src, e)
     }
   }
 
@@ -205,8 +216,10 @@ function toggleFavorite(stickerId) {
 
 // ========== 工具函数 ==========
 
+let _idCounter = 0
 function generateId() {
-  return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9)
+  _idCounter++
+  return 'id_' + Date.now().toString(36) + '_' + _idCounter.toString(36) + '_' + Math.random().toString(36).substr(2, 6)
 }
 
 function clearAll() {
@@ -215,8 +228,10 @@ function clearAll() {
 
 module.exports = {
   STORAGE_KEYS,
+  generateId,
   getBooks, saveBooks, getBookById, createBook, updateBook, deleteBook,
   getPages, savePages, getPageById, createPage, updatePage, deletePage,
+  getBookPageCounts,
   getStickers, saveSticker, updateSticker, deleteSticker, toggleFavorite,
   clearAll
 }

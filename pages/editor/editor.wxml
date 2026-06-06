@@ -1,4 +1,4 @@
-<view class="editor-page {{editorMode === 'preview' ? 'preview-mode' : 'edit-mode'}}">
+﻿<view class="editor-page {{editorMode === 'preview' ? 'preview-mode' : 'edit-mode'}}">
   <view class="top-bar">
     <view class="top-left">
       <view class="icon-btn back-btn" bindtap="onTapBack" aria-label="返回">
@@ -406,7 +406,7 @@
         </view>
       </view>
       <view class="color-picker-body">
-        <view class="color-preview" style="background: {{colorPickerTarget === 'text' ? textColor : background}};"></view>
+        <view class="color-preview" style="background: {{colorPickerTarget === 'text' ? textColor : colorPickerTarget === 'rectFill' ? rectFillColor : colorPickerTarget === 'rectStroke' ? rectStrokeColor : colorPickerTarget === 'border' ? borderColor : background}};"></view>
         <view class="color-slider-group">
           <view class="slider-row">
             <text class="slider-label">色相</text>

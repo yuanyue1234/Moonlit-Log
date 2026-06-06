@@ -1,5 +1,6 @@
 // app.js - 我的手帐小程序
 const fileUtil = require('./utils/file')
+const storage = require('./utils/storage')
 
 App({
   onLaunch() {
@@ -20,6 +21,10 @@ App({
         if (result.deleted > 0) {
           console.log(`[cleanup] 清理了 ${result.deleted} 个未使用文件`)
         }
+      }).catch(err => {
+        console.warn('[cleanup] 清理文件失败:', err)
+        // 失败时也更新时间戳，避免每次启动都重试
+        wx.setStorageSync('last_file_cleanup', now)
       })
     }
   },
@@ -36,7 +41,7 @@ App({
     let books = wx.getStorageSync('journal_books') || []
     if (books.length === 0) {
       const defaultBook = {
-        id: this.generateId(),
+        id: storage.generateId(),
         name: '默认手帐本',
         cover: 'default',
         theme: 'cream',
@@ -52,10 +57,6 @@ App({
     if (stickers.length === 0) {
       wx.setStorageSync('sticker_assets', [])
     }
-  },
-
-  generateId() {
-    return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9)
   },
 
   globalData: {

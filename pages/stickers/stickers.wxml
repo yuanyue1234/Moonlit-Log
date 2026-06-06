@@ -25,7 +25,7 @@
     <view class="masonry" wx:if="{{!isEmpty}}">
       <view class="masonry-col">
         <view class="masonry-item {{selectedStickerId === item.id ? 'selected' : ''}}" wx:for="{{colLeft}}" wx:key="id"
-          bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview" data-id="{{item.id}}">
+          bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview">
           <image src="{{item.src}}" mode="widthFix" class="masonry-img effect-{{item.effect || 'none'}}" />
           <view class="quick-actions" wx:if="{{selectedStickerId === item.id}}" catchtap="stopPropagation">
             <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">
@@ -43,7 +43,7 @@
       </view>
       <view class="masonry-col">
         <view class="masonry-item {{selectedStickerId === item.id ? 'selected' : ''}}" wx:for="{{colRight}}" wx:key="id"
-          bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview" data-id="{{item.id}}">
+          bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview">
           <image src="{{item.src}}" mode="widthFix" class="masonry-img effect-{{item.effect || 'none'}}" />
           <view class="quick-actions" wx:if="{{selectedStickerId === item.id}}" catchtap="stopPropagation">
             <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">

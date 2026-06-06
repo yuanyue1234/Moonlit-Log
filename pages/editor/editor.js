@@ -1,4 +1,4 @@
-// pages/editor/editor.js - 手账页编辑器（完全重写 - 修复所有 bug）
+﻿// pages/editor/editor.js - 手账页编辑器（完全重写 - 修复所有 bug）
 const storage = require('../../utils/storage')
 const themeUtil = require('../../utils/theme')
 const templateUtil = require('../../utils/template')
@@ -19,6 +19,21 @@ let renderScheduled = false
 // ========== 图片缓存 ==========
 // 解决 Bug: 图片异步加载导致绘制失败
 const imageCache = new Map() // src -> { img, loaded, width, height }
+
+// ========== 纹理缓存 ==========
+const textureCache = new Map() // key -> OffscreenCanvas
+function getTextureCanvas(key, w, h, drawFn) {
+  if (textureCache.has(key)) return textureCache.get(key)
+  try {
+    const offCanvas = wx.createOffscreenCanvas({ type: '2d', width: w, height: h })
+    const offCtx = offCanvas.getContext('2d')
+    drawFn(offCtx, w, h)
+    textureCache.set(key, offCanvas)
+    return offCanvas
+  } catch (e) {
+    return null
+  }
+}
 
 function loadImage(src, canvas) {
   return new Promise((resolve, reject) => {
@@ -119,7 +134,6 @@ Page({
     bgPatterns: ['blank', 'dots', 'lines', 'grid'],
     bgTexture: 'none',
     // 是否有未保存的图片需要异步加载
-    _pendingImageRenders: false,
     // 输入法高度适配
     keyboardHeight: 0,
     // 调色盘
@@ -152,11 +166,11 @@ Page({
   maxHistory: 50,
 
   onLoad(options) {
-    const { bookId, pageId, templateId, mode } = options
+    const { bookId, pageId, templateId, mode } = options || {}
     const book = storage.getBookById(bookId)
     if (!book) {
       wx.showToast({ title: '手账本不存在', icon: 'none' })
-      setTimeout(() => wx.navigateBack(), 1500)
+      setTimeout(() => wx.navigateBack(), 800)
       return
     }
 
@@ -254,6 +268,7 @@ Page({
     if (pageId) storage.updatePage(pageId, { elements, background, bgPattern })
     // 清理图片缓存
     imageCache.clear()
+    textureCache.clear()
   },
 
   // ==================== Canvas 初始化 ====================
@@ -264,6 +279,7 @@ Page({
       .exec((res) => {
         if (!res[0] || !res[0].node) {
           console.error('Canvas 节点未找到')
+          wx.showToast({ title: '画布初始化失败', icon: 'none' })
           return
         }
         const canvas = res[0].node
@@ -325,7 +341,6 @@ Page({
     if (bgTexture && bgTexture !== 'none') {
       this._drawTextureOverlay(ctx, bgTexture, this._isLightColor(background))
     }
-
     // 绘制纸面纹路（点阵、横线、网格）
     this._drawBackgroundPattern(ctx, background, bgPattern)
 
@@ -392,123 +407,113 @@ Page({
 
   // 绘制纸面材质叠加效果 - 作为遮罩层覆盖在背景上
   _drawTextureOverlay(ctx, texture, isLight) {
-    ctx.save()
-
-    // 根据材质类型绘制不同的纹理效果
     const w = canvasPxW
     const h = canvasPxH
 
-    // 使用半透明颜色绘制纹理，作为遮罩层
-    const textureColor = isLight ? 'rgba(0, 0, 0, ' : 'rgba(255, 255, 255, '
+    // 纹理缓存：避免每次重绘都执行数千次循环
+    const cacheKey = texture + '_' + w + 'x' + h + '_' + (isLight ? 'L' : 'D')
+    let offCanvas = textureCache.get(cacheKey)
 
-    if (texture === 'grain') {
-      // 纸纹 - 细微颗粒感
-      ctx.globalAlpha = 0.08
-      for (let i = 0; i < 3000; i++) {
-        const x = Math.random() * w
-        const y = Math.random() * h
-        const size = Math.random() * 2 + 0.5
-        ctx.fillStyle = textureColor + (Math.random() * 0.5 + 0.2) + ')'
-        ctx.fillRect(x, y, size, size)
+    if (!offCanvas) {
+      // 缓存未命中，渲染到 OffscreenCanvas
+      try {
+        offCanvas = wx.createOffscreenCanvas({ type: '2d', width: w, height: h })
+      } catch (e) {
+        return
       }
-    } else if (texture === 'canvas') {
-      // 画布 - 十字编织纹理
-      ctx.globalAlpha = 0.06
-      ctx.strokeStyle = textureColor + '0.3)'
-      ctx.lineWidth = 0.5
-      for (let x = 0; x < w; x += 4) {
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, h)
-        ctx.stroke()
-      }
-      for (let y = 0; y < h; y += 4) {
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(w, y)
-        ctx.stroke()
-      }
-    } else if (texture === 'kraft') {
-      // 牛皮纸 - 纤维纹理
-      ctx.globalAlpha = 0.05
-      ctx.strokeStyle = textureColor + '0.25)'
-      ctx.lineWidth = 0.3
-      for (let i = 0; i < 600; i++) {
-        const x = Math.random() * w
-        const y = Math.random() * h
-        const len = Math.random() * 20 + 5
-        const angle = Math.random() * Math.PI
-        ctx.beginPath()
-        ctx.moveTo(x, y)
-        ctx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len)
-        ctx.stroke()
-      }
-      // 添加噪点
-      ctx.globalAlpha = 0.08
-      for (let i = 0; i < 1500; i++) {
-        const x = Math.random() * w
-        const y = Math.random() * h
-        ctx.fillStyle = textureColor + (Math.random() * 0.4 + 0.1) + ')'
-        ctx.fillRect(x, y, 1, 1)
-      }
-    } else if (texture === 'linen') {
-      // 亚麻 - 编织纹理
-      ctx.globalAlpha = 0.05
-      ctx.strokeStyle = textureColor + '0.25)'
-      ctx.lineWidth = 0.4
-      // 横向纤维
-      for (let y = 0; y < h; y += 6) {
-        ctx.beginPath()
-        for (let x = 0; x < w; x += 2) {
-          const offsetY = Math.sin(x * 0.1) * 0.5
-          if (x === 0) ctx.moveTo(x, y + offsetY)
-          else ctx.lineTo(x, y + offsetY)
+      const offCtx = offCanvas.getContext('2d')
+      const textureColor = isLight ? 'rgba(0, 0, 0, ' : 'rgba(255, 255, 255, '
+
+      if (texture === 'grain') {
+        offCtx.globalAlpha = 0.08
+        for (let i = 0; i < 3000; i++) {
+          const x = Math.random() * w
+          const y = Math.random() * h
+          const size = Math.random() * 2 + 0.5
+          offCtx.fillStyle = textureColor + (Math.random() * 0.5 + 0.2) + ')'
+          offCtx.fillRect(x, y, size, size)
         }
-        ctx.stroke()
-      }
-      // 纵向纤维
-      for (let x = 0; x < w; x += 6) {
-        ctx.beginPath()
-        for (let y = 0; y < h; y += 2) {
-          const offsetX = Math.sin(y * 0.1) * 0.5
-          if (y === 0) ctx.moveTo(x + offsetX, y)
-          else ctx.lineTo(x + offsetX, y)
+      } else if (texture === 'canvas') {
+        offCtx.globalAlpha = 0.06
+        offCtx.strokeStyle = textureColor + '0.3)'
+        offCtx.lineWidth = 0.5
+        for (let x = 0; x < w; x += 4) {
+          offCtx.beginPath(); offCtx.moveTo(x, 0); offCtx.lineTo(x, h); offCtx.stroke()
         }
-        ctx.stroke()
+        for (let y = 0; y < h; y += 4) {
+          offCtx.beginPath(); offCtx.moveTo(0, y); offCtx.lineTo(w, y); offCtx.stroke()
+        }
+      } else if (texture === 'kraft') {
+        offCtx.globalAlpha = 0.05
+        offCtx.strokeStyle = textureColor + '0.25)'
+        offCtx.lineWidth = 0.3
+        for (let i = 0; i < 600; i++) {
+          const x = Math.random() * w; const y = Math.random() * h
+          const len = Math.random() * 20 + 5; const angle = Math.random() * Math.PI
+          offCtx.beginPath(); offCtx.moveTo(x, y)
+          offCtx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len); offCtx.stroke()
+        }
+        offCtx.globalAlpha = 0.08
+        for (let i = 0; i < 1500; i++) {
+          offCtx.fillStyle = textureColor + (Math.random() * 0.4 + 0.1) + ')'
+          offCtx.fillRect(Math.random() * w, Math.random() * h, 1, 1)
+        }
+      } else if (texture === 'linen') {
+        offCtx.globalAlpha = 0.05
+        offCtx.strokeStyle = textureColor + '0.25)'
+        offCtx.lineWidth = 0.4
+        for (let y = 0; y < h; y += 6) {
+          offCtx.beginPath()
+          for (let x = 0; x < w; x += 2) {
+            const offsetY = Math.sin(x * 0.1) * 0.5
+            if (x === 0) offCtx.moveTo(x, y + offsetY); else offCtx.lineTo(x, y + offsetY)
+          }
+          offCtx.stroke()
+        }
+        for (let x = 0; x < w; x += 6) {
+          offCtx.beginPath()
+          for (let y = 0; y < h; y += 2) {
+            const offsetX = Math.sin(y * 0.1) * 0.5
+            if (y === 0) offCtx.moveTo(x + offsetX, y); else offCtx.lineTo(x + offsetX, y)
+          }
+          offCtx.stroke()
+        }
+      } else if (texture === 'watercolor') {
+        offCtx.globalAlpha = 0.06
+        const spots = [
+          { x: w * 0.3, y: h * 0.4, r: w * 0.25 },
+          { x: w * 0.7, y: h * 0.6, r: w * 0.2 },
+          { x: w * 0.5, y: h * 0.2, r: w * 0.18 },
+          { x: w * 0.2, y: h * 0.8, r: w * 0.15 },
+          { x: w * 0.8, y: h * 0.3, r: w * 0.22 }
+        ]
+        spots.forEach(spot => {
+          const gradient = offCtx.createRadialGradient(spot.x, spot.y, 0, spot.x, spot.y, spot.r)
+          gradient.addColorStop(0, textureColor + '0.15)')
+          gradient.addColorStop(1, textureColor + '0)')
+          offCtx.fillStyle = gradient
+          offCtx.fillRect(0, 0, w, h)
+        })
+        offCtx.globalAlpha = 0.08
+        for (let i = 0; i < 600; i++) {
+          offCtx.fillStyle = textureColor + (Math.random() * 0.3 + 0.1) + ')'
+          offCtx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 2, Math.random() * 2)
+        }
       }
-    } else if (texture === 'watercolor') {
-      // 水彩 - 晕染效果
-      ctx.globalAlpha = 0.06
-      const spots = [
-        { x: w * 0.3, y: h * 0.4, r: w * 0.25 },
-        { x: w * 0.7, y: h * 0.6, r: w * 0.2 },
-        { x: w * 0.5, y: h * 0.2, r: w * 0.18 },
-        { x: w * 0.2, y: h * 0.8, r: w * 0.15 },
-        { x: w * 0.8, y: h * 0.3, r: w * 0.22 }
-      ]
-      spots.forEach(spot => {
-        const gradient = ctx.createRadialGradient(spot.x, spot.y, 0, spot.x, spot.y, spot.r)
-        gradient.addColorStop(0, textureColor + '0.15)')
-        gradient.addColorStop(1, textureColor + '0)')
-        ctx.fillStyle = gradient
-        ctx.fillRect(0, 0, w, h)
-      })
-      // 添加一些随机噪点
-      ctx.globalAlpha = 0.08
-      for (let i = 0; i < 600; i++) {
-        const x = Math.random() * w
-        const y = Math.random() * h
-        ctx.fillStyle = textureColor + (Math.random() * 0.3 + 0.1) + ')'
-        ctx.fillRect(x, y, Math.random() * 2, Math.random() * 2)
-      }
+
+      textureCache.set(cacheKey, offCanvas)
     }
 
+    // 将缓存的纹理绘制到主画布
+    ctx.save()
+    ctx.drawImage(offCanvas, 0, 0, w, h)
     ctx.restore()
   },
 
   _isLightColor(color = '#FFFFFF') {
-    const hex = String(color).replace('#', '')
-    if (hex.length !== 6) return true
+    const c = String(color)
+    if (c === 'transparent' || c.startsWith('rgba')) return false
+    const hex = c.replace('#', '')
     const r = parseInt(hex.slice(0, 2), 16)
     const g = parseInt(hex.slice(2, 4), 16)
     const b = parseInt(hex.slice(4, 6), 16)
@@ -628,8 +633,8 @@ Page({
         } else {
           drawW = h * imgRatio
         }
-        imageEffect.drawImageEffect(ctx, el.src, cached.img, -drawW / 2, -drawH / 2, drawW, drawH, el.effect || 'none')
-        ctx.drawImage(cached.img, -drawW/2, -drawH/2, drawW, drawH)
+        const imageDrawnByEffect = imageEffect.drawImageEffect(ctx, el.src, cached.img, -drawW / 2, -drawH / 2, drawW, drawH, el.effect || 'none')
+        if (!imageDrawnByEffect) ctx.drawImage(cached.img, -drawW/2, -drawH/2, drawW, drawH)
       } catch (e) {
         this._drawPlaceholder(ctx, w, h, 'IMAGE')
       }
@@ -1731,7 +1736,7 @@ Page({
     }
 
     const elements = [...this.data.elements, newEl]
-    this.setData({ elements, selectedId: id, selectedElement: newEl, showDecorationPanel: false })
+    this.setData({ elements, selectedId: id, selectedElement: newEl })
     this.pushHistory()
     this.renderCanvas()
     wx.showToast({ title: '已添加', icon: 'none', duration: 800 })
@@ -2011,6 +2016,9 @@ Page({
           console.error('保存图片失败', err)
           wx.showToast({ title: '保存图片失败', icon: 'none' })
         })
+      },
+      fail: () => {
+        // 用户取消选择，不做任何处理
       }
     })
   },
@@ -2400,10 +2408,10 @@ Page({
 
   // ==================== 面板切换 ====================
   toggleBgPanel() {
-    this.setData({ showBgPanel: !this.data.showBgPanel, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false, showDecorationPanel: false })
+    this.setData({ showBgPanel: !this.data.showBgPanel, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false })
   },
   toggleStickerPanel() {
-    this.setData({ showStickerPanel: !this.data.showStickerPanel, showBgPanel: false, showTextPanel: false, showTemplatePanel: false, showDecorationPanel: false })
+    this.setData({ showStickerPanel: !this.data.showStickerPanel, showBgPanel: false, showTextPanel: false, showTemplatePanel: false })
   },
   toggleTextPanel() {
     const opening = !this.data.showTextPanel
@@ -2424,7 +2432,7 @@ Page({
     })
   },
   toggleTemplatePanel() {
-    this.setData({ showTemplatePanel: !this.data.showTemplatePanel, showBgPanel: false, showStickerPanel: false, showTextPanel: false, showDecorationPanel: false })
+    this.setData({ showTemplatePanel: !this.data.showTemplatePanel, showBgPanel: false, showStickerPanel: false, showTextPanel: false })
   },
   toggleRectPanel() {
     this.setData({
@@ -2437,7 +2445,7 @@ Page({
     })
   },
   closeAllPanels() {
-    this.setData({ showBgPanel: false, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false, showDecorationPanel: false, showRectPanel: false, showBorderPanel: false, editingTextId: '', textPanelMode: 'add' })
+    this.setData({ showBgPanel: false, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false, showRectPanel: false, showBorderPanel: false, editingTextId: '', textPanelMode: 'add' })
   },
   // 矩形工具方法
   onRectShape(e) {
@@ -2516,6 +2524,9 @@ Page({
       success: (res) => {
         const tempPath = res.tempFiles[0].tempFilePath
         this._addImageElement(tempPath)
+      },
+      fail: () => {
+        // 用户取消选择，不做任何处理
       }
     })
   },
@@ -2528,6 +2539,9 @@ Page({
       success: (res) => {
         const tempPath = res.tempFiles[0].tempFilePath
         this._addImageElement(tempPath)
+      },
+      fail: () => {
+        // 用户取消选择，不做任何处理
       }
     })
   },
@@ -2543,8 +2557,11 @@ Page({
 
   _addSavedImageElement(src) {
     // 预加载图片以获取尺寸
-    if (canvasNode) {
-      loadImage(src, canvasNode).then(entry => {
+    if (!canvasNode) {
+      wx.showToast({ title: ''画布未就绪'', icon: ''none'' })
+      return
+    }
+    loadImage(src, canvasNode).then(entry => {
         const maxZ = this._getMaxZIndex()
         // 根据图片宽高比调整元素大小
         let w = 250, h = 250
@@ -2688,7 +2705,7 @@ Page({
     }
 
     // 清理图片缓存（仅清理当前页的图片）
-    imageCache.clear()
+    // 保留图片缓存，跨页共享的图片无需重新加载
 
     const allPages = storage.getPages(bookId)
     const newIndex = allPages.findIndex(p => p.id === pageId)

@@ -42,13 +42,14 @@ Page({
 
   loadBooks() {
     const books = storage.getBooks()
+    // 批量获取所有手账本的页数，避免N+1查询
+    const pageCounts = storage.getBookPageCounts()
     const enrichedBooks = books.map(book => {
       const themeInfo = theme.getTheme(book.theme)
-      const pages = storage.getPages(book.id)
       return {
         ...book,
         themeInfo,
-        pageCount: pages.length,
+        pageCount: pageCounts[book.id] || 0,
         timeAgo: this.getTimeAgo(book.updatedAt)
       }
     })

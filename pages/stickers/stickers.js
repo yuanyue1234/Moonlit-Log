@@ -29,9 +29,15 @@ Page({
   },
 
   loadStickers() {
-    const stickers = storage.getStickers()
-    this.setData({ stickers })
-    this.filterStickers()
+    try {
+      const stickers = storage.getStickers()
+      this.setData({ stickers })
+      this.filterStickers()
+    } catch (err) {
+      console.error('[stickers] loadStickers error:', err)
+      this.setData({ stickers: [], isEmpty: true })
+      wx.showToast({ title: '加载贴纸失败', icon: 'none' })
+    }
   },
 
   filterStickers() {
