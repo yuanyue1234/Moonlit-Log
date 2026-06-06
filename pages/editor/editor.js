@@ -1932,6 +1932,7 @@ Page({
       { label: '复制样式', fn: () => this.copySelectedStyle() },
       { label: '粘贴样式', fn: () => this.pasteSelectedStyle() }
     ]
+    // 图片效果选项
     if (el.type === 'image') {
       actions.push(
         { label: '无效果', fn: () => this.setSelectedEffect({ currentTarget: { dataset: { effect: 'none' } } }) },
@@ -1939,6 +1940,10 @@ Page({
         { label: '纸贴', fn: () => this.setSelectedEffect({ currentTarget: { dataset: { effect: 'paper' } } }) },
         { label: '阴影', fn: () => this.setSelectedEffect({ currentTarget: { dataset: { effect: 'shadow' } } }) }
       )
+    }
+    // 矩形占位框可以添加图片
+    if (el.type === 'decoration' && el.subType === 'rect' && el.lineStyle === 'dashed') {
+      actions.push({ label: '添加图片', fn: () => this.replaceRectWithImage(el) })
     }
     if (el.border) {
       actions.push({ label: '移除边框', fn: () => this.removeBorder() })
@@ -1948,6 +1953,41 @@ Page({
       success: (res) => {
         const action = actions[res.tapIndex]
         if (action) action.fn()
+      }
+    })
+  },
+  replaceRectWithImage(rectEl) {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album'],
+      success: (res) => {
+        const tempPath = res.tempFiles[0].tempFilePath
+        fileUtil.persistFile(tempPath).then(savedSrc => {
+          // 替换矩形为图片
+          const imageEl = {
+            id: rectEl.id,
+            type: 'image',
+            src: savedSrc,
+            x: rectEl.x,
+            y: rectEl.y,
+            width: rectEl.width,
+            height: rectEl.height,
+            rotation: rectEl.rotation || 0,
+            scaleX: rectEl.scaleX || 1,
+            scaleY: rectEl.scaleY || 1,
+            zIndex: rectEl.zIndex,
+            effect: 'none'
+          }
+          this._updateElement(rectEl.id, imageEl)
+          this.setData({ selectedElement: imageEl })
+          this.pushHistory()
+          this.renderCanvas()
+          wx.showToast({ title: '已添加图片', icon: 'none' })
+        }).catch(err => {
+          console.error('保存图片失败', err)
+          wx.showToast({ title: '保存图片失败', icon: 'none' })
+        })
       }
     })
   },
