@@ -30,10 +30,10 @@ Page({
     showStylePicker: false,
     postProcessEffect: 'white-border',
     postProcessOptions: [
-      { key: 'none', name: '无效果', desc: '保留透明 PNG 原样' },
-      { key: 'white-border', name: '白边', desc: '适合贴纸素材' },
-      { key: 'paper', name: '纸贴', desc: '贴合主体轮廓的纸边' },
-      { key: 'shadow', name: '阴影', desc: '增强层次感' }
+      { key: 'none', name: '无效果', desc: '保留透明 PNG 原样', icon: '/assets/icons/x.svg' },
+      { key: 'white-border', name: '白边', desc: '主体轮廓描边', icon: '/assets/icons/sticker.svg' },
+      { key: 'paper', name: '纸贴', desc: '贴合主体轮廓的纸边', icon: '/assets/icons/file-text.svg' },
+      { key: 'shadow', name: '阴影', desc: '主体轮廓阴影', icon: '/assets/icons/layers.svg' }
     ],
     recentExtracts: [],
     extractResultId: '',
@@ -192,9 +192,14 @@ Page({
     if (!stickerId) return
 
     const books = storage.getBooks()
-    if (books.length > 0) {
-      wx.navigateTo({ url: `/pages/editor/editor?bookId=${books[0].id}` })
+    if (books.length === 0) {
+      wx.showToast({ title: '请先新建手帐本', icon: 'none' })
+      return
     }
+
+    wx.navigateTo({
+      url: `/pages/editor/editor?bookId=${books[0].id}&stickerId=${encodeURIComponent(stickerId)}`
+    })
   },
 
   reset() {

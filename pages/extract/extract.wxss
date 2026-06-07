@@ -202,6 +202,15 @@
   color: #bdbdbd;
   background: #101010;
   font-size: 22rpx;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.postprocess-icon {
+  width: 24rpx;
+  height: 24rpx;
+  filter: invert(71%) sepia(8%) saturate(218%) hue-rotate(169deg) brightness(92%) contrast(86%);
 }
 
 .postprocess-chip.active,
@@ -209,4 +218,8 @@
   border-color: #00d992;
   background: rgba(0, 217, 146, 0.1);
   color: #00d992;
+}
+
+.postprocess-chip.active .postprocess-icon {
+  filter: invert(77%) sepia(88%) saturate(1391%) hue-rotate(98deg) brightness(96%) contrast(102%);
 }

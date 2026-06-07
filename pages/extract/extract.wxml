@@ -58,6 +58,7 @@
       <view class="postprocess-title">后处理效果</view>
       <view class="postprocess-options">
         <view class="postprocess-chip {{postProcessEffect === item.key ? 'active' : ''}}" wx:for="{{postProcessOptions}}" wx:key="key" bindtap="onSelectPostProcess" data-effect="{{item.key}}">
+          <image class="postprocess-icon" src="{{item.icon}}" mode="aspectFit" />
           {{item.name}}
         </view>
       </view>

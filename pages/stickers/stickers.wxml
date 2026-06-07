@@ -13,6 +13,7 @@
     <view class="dashed-divider"></view>
   </view>
 
+  <view class="category-title">标签分类</view>
   <scroll-view scroll-x class="category-scroll" enhanced show-scrollbar="{{false}}">
     <view class="category-list">
       <view class="category-tag {{activeCategory === item.key ? 'active' : ''}}" wx:for="{{categories}}" wx:key="key" bindtap="onTapCategory" data-key="{{item.key}}">
@@ -99,9 +100,13 @@
           <text class="meta-label">来源</text>
           <text class="meta-value">{{previewSticker.source === 'ai_extract' ? 'AI 提取' : '用户上传'}}</text>
         </view>
+        <view class="tag-editor" wx:if="{{showTagEditor}}">
+          <input class="tag-input" value="{{previewTagInput}}" placeholder="输入新标签" bindinput="onPreviewTagInput" confirm-type="done" bindconfirm="confirmPreviewAddTag" />
+          <view class="tag-confirm" bindtap="confirmPreviewAddTag">确定</view>
+        </view>
         <view class="preview-actions">
           <view class="preview-btn" bindtap="previewToggleFavorite">{{previewSticker.isFavorite ? '取消收藏' : '收藏'}}</view>
-          <view class="preview-btn" bindtap="previewCopyTags">复制标签</view>
+          <view class="preview-btn" bindtap="previewAddTag">添加标签</view>
           <view class="preview-btn danger" bindtap="previewDelete">删除</view>
         </view>
       </view>

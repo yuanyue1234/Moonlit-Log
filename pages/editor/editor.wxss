@@ -1,4 +1,4 @@
-/* pages/editor/editor.wxss - 鏆楄壊涓婚 */
+/* pages/editor/editor.wxss - 编辑器页面 */
 .editor-page {
   height: 100vh;
   display: flex;
@@ -7,7 +7,7 @@
   overflow: hidden;
 }
 
-/* 椤堕儴宸ュ叿鏍?*/
+/* 顶部工具栏 */
 .top-bar {
   display: flex;
   align-items: center;
@@ -194,6 +194,99 @@
 .sel-btn.disabled {
   opacity: 0.4;
   pointer-events: none;
+}
+
+.selected-more-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(31, 35, 40, 0.24);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 118;
+  transition: opacity 0.16s ease;
+}
+
+.selected-more-mask.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.selected-more-sheet {
+  position: fixed;
+  left: 20rpx;
+  right: 20rpx;
+  bottom: calc(20rpx + env(safe-area-inset-bottom));
+  padding: 24rpx;
+  background: #fffdf7;
+  border: 1rpx solid rgba(31, 35, 40, 0.1);
+  border-radius: 24rpx;
+  box-shadow: 0 24rpx 70rpx rgba(31, 35, 40, 0.2);
+  opacity: 0;
+  transform: translateY(28rpx);
+  pointer-events: none;
+  z-index: 119;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  box-sizing: border-box;
+}
+
+.selected-more-sheet.show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.selected-more-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+  color: #202124;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.selected-more-close {
+  width: 52rpx;
+  height: 52rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  background: rgba(31, 35, 40, 0.06);
+}
+
+.selected-more-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.selected-more-item {
+  min-height: 82rpx;
+  padding: 0 18rpx;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  border-radius: 18rpx;
+  background: #ffffff;
+  border: 1rpx solid rgba(31, 35, 40, 0.08);
+  color: #202124;
+  font-size: 26rpx;
+  box-sizing: border-box;
+}
+
+.selected-more-item:active {
+  background: rgba(0, 217, 146, 0.12);
+  border-color: rgba(0, 217, 146, 0.35);
+}
+
+.selected-more-icon {
+  width: 34rpx;
+  height: 34rpx;
+  flex: 0 0 34rpx;
 }
 
 /* 浮动工具条 */
@@ -396,7 +489,7 @@
   height: 80rpx;
 }
 
-/* ===== 瑁呴グ缃戞牸 ===== */
+/* ===== 装饰网格 ===== */
 .decoration-grid {
   display: flex;
   flex-wrap: wrap;
@@ -600,40 +693,59 @@
   height: 60rpx;
   border-radius: 8rpx;
   background: #fdf9ef;
+  border: 1rpx solid rgba(80, 64, 42, 0.12);
+  box-shadow: inset 0 1rpx 6rpx rgba(80, 64, 42, 0.12);
+  overflow: hidden;
 }
 
 .texture-none {
-  background: #fdf9ef;
+  background: linear-gradient(135deg, #fffdf7 0%, #f7efe2 100%);
 }
 
 .texture-grain {
-  background: #fdf9ef;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23fdf9ef'/%3E%3Crect width='1' height='1' fill='%23f0e8d8' opacity='0.5'/%3E%3C/svg%3E");
-  background-size: 4rpx 4rpx;
+  background-color: #fdf7ec;
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(80, 64, 42, 0.2) 0 1rpx, transparent 2rpx),
+    radial-gradient(circle at 72% 58%, rgba(188, 152, 104, 0.28) 0 1rpx, transparent 2rpx),
+    linear-gradient(110deg, rgba(80, 64, 42, 0.08), transparent 42%),
+    linear-gradient(135deg, #fffaf1 0%, #f4ead8 100%);
+  background-size: 11rpx 11rpx, 17rpx 17rpx, 100% 100%, 100% 100%;
 }
 
 .texture-canvas {
-  background: #fdf9ef;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23fdf9ef'/%3E%3Cpath d='M0 0h8v1H0zM0 4h8v1H0z' fill='%23e8dcc8' opacity='0.3'/%3E%3Cpath d='M0 0v8h1V0zM4 0v8h1V0z' fill='%23e8dcc8' opacity='0.3'/%3E%3C/svg%3E");
-  background-size: 8rpx 8rpx;
+  background-color: #f9f2e6;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(80, 64, 42, 0.16) 0 1rpx, transparent 1rpx 7rpx),
+    repeating-linear-gradient(90deg, rgba(188, 152, 104, 0.16) 0 1rpx, transparent 1rpx 7rpx),
+    linear-gradient(135deg, #fff8ed 0%, #eee2cf 100%);
 }
 
 .texture-kraft {
-  background: #d4a574;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Crect width='6' height='6' fill='%23d4a574'/%3E%3Crect width='2' height='2' fill='%23c89460' opacity='0.4'/%3E%3Crect x='3' y='3' width='2' height='2' fill='%23c89460' opacity='0.3'/%3E%3C/svg%3E");
-  background-size: 6rpx 6rpx;
+  background-color: #d8aa73;
+  background-image:
+    radial-gradient(circle at 25% 35%, rgba(88, 60, 34, 0.2) 0 1rpx, transparent 2rpx),
+    radial-gradient(circle at 75% 70%, rgba(255, 231, 178, 0.18) 0 1rpx, transparent 2rpx),
+    repeating-linear-gradient(12deg, rgba(96, 66, 36, 0.14) 0 1rpx, transparent 1rpx 13rpx),
+    linear-gradient(135deg, #e2ba82 0%, #bd8753 100%);
+  background-size: 15rpx 15rpx, 19rpx 19rpx, 100% 100%, 100% 100%;
 }
 
 .texture-linen {
-  background: #f5f0e8;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Crect width='10' height='10' fill='%23f5f0e8'/%3E%3Cpath d='M0 0h10v1H0zM0 5h10v1H0z' fill='%23e0d8c8' opacity='0.2'/%3E%3Cpath d='M0 0v10h1V0zM5 0v10h1V0z' fill='%23e0d8c8' opacity='0.2'/%3E%3C/svg%3E");
-  background-size: 10rpx 10rpx;
+  background-color: #f6efe4;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(80, 64, 42, 0.13) 0 1rpx, transparent 1rpx 8rpx),
+    repeating-linear-gradient(90deg, rgba(80, 64, 42, 0.1) 0 1rpx, transparent 1rpx 10rpx),
+    repeating-linear-gradient(45deg, rgba(188, 152, 104, 0.08) 0 1rpx, transparent 1rpx 14rpx),
+    linear-gradient(135deg, #fff9ee 0%, #e9decc 100%);
 }
 
 .texture-watercolor {
-  background: #fdf9ef;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12'%3E%3Crect width='12' height='12' fill='%23fdf9ef'/%3E%3Ccircle cx='3' cy='3' r='4' fill='%23f0e8d8' opacity='0.15'/%3E%3Ccircle cx='9' cy='9' r='3' fill='%23e8dcc8' opacity='0.1'/%3E%3C/svg%3E");
-  background-size: 12rpx 12rpx;
+  background-color: #fff8ef;
+  background-image:
+    radial-gradient(circle at 30% 35%, rgba(188, 152, 104, 0.26) 0 12rpx, transparent 26rpx),
+    radial-gradient(circle at 78% 70%, rgba(80, 64, 42, 0.12) 0 10rpx, transparent 24rpx),
+    radial-gradient(circle at 68% 20%, rgba(255, 201, 196, 0.24) 0 8rpx, transparent 22rpx),
+    linear-gradient(135deg, #fffaf2 0%, #f2e4d6 100%);
 }
 
 /* 调色盘弹窗 */
@@ -979,7 +1091,7 @@
   text-align: center;
 }
 
-/* ===== 椤甸潰瀵艰埅灏忓渾鐐?===== */
+/* ===== 页面导航小圆点 ===== */
 .page-dots-bar {
   padding: 8rpx 0;
   background: rgba(245, 245, 245, 0.95);
@@ -1096,7 +1208,7 @@
   background: transparent;
 }
 
-/* ===== 2026 缂栬緫鍣ㄧ晫闈㈤噸鏁达細绾歌川鐢诲竷 + 绾挎潯宸ュ叿 ===== */
+/* ===== 2026 编辑器界面重构：纸质画布 + 线条工具 ===== */
 .editor-page {
   background: #f1eee6;
   color: #202124;
@@ -1808,4 +1920,3 @@
 .floating-tool-dock .tool-btn.active text {
   color: #1b6f4a;
 }
-

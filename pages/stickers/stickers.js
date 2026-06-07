@@ -19,6 +19,8 @@ Page({
     isEditing: false,
     showPreview: false,
     previewSticker: null,
+    showTagEditor: false,
+    previewTagInput: '',
     selectedStickerId: null,
     showBookPicker: false,
     books: []
@@ -102,7 +104,7 @@ Page({
     const id = e.currentTarget.dataset.id
     const sticker = this.data.stickers.find(s => s.id === id)
     if (sticker) {
-      this.setData({ showPreview: true, previewSticker: sticker })
+      this.setData({ showPreview: true, previewSticker: sticker, showTagEditor: false, previewTagInput: '' })
     }
   },
 
@@ -149,10 +151,15 @@ Page({
     const sticker = this.data.stickers.find(s => s.id === stickerId)
     if (!sticker) return
 
-    const pages = storage.getPages(bookId)
+    let pages = storage.getPages(bookId)
+    if (pages.length === 0) {
+      storage.ensureCoverPage(bookId)
+      pages = storage.getPages(bookId)
+    }
     let targetPage
-    if (pages.length > 0) {
-      targetPage = pages[pages.length - 1]
+    const contentPages = pages.filter(page => page.role !== 'cover')
+    if (contentPages.length > 0) {
+      targetPage = contentPages[contentPages.length - 1]
     } else {
       targetPage = storage.createPage(bookId)
     }
@@ -185,7 +192,7 @@ Page({
   },
 
   closePreview() {
-    this.setData({ showPreview: false, previewSticker: null })
+    this.setData({ showPreview: false, previewSticker: null, showTagEditor: false, previewTagInput: '' })
   },
 
   refreshPreview(stickerId) {
@@ -238,18 +245,42 @@ Page({
     this.deleteSticker(previewSticker.id, () => this.closePreview())
   },
 
-  previewCopyTags() {
-    const { previewSticker } = this.data
-    const tags = previewSticker && previewSticker.tags ? previewSticker.tags : []
-    if (tags.length === 0) {
-      wx.showToast({ title: '没有标签', icon: 'none' })
+  previewAddTag() {
+    const { previewSticker, showTagEditor } = this.data
+    if (!previewSticker) return
+    this.setData({ showTagEditor: !showTagEditor, previewTagInput: '' })
+  },
+
+  onPreviewTagInput(e) {
+    this.setData({ previewTagInput: e.detail.value })
+  },
+
+  confirmPreviewAddTag() {
+    const { previewSticker, previewTagInput } = this.data
+    if (!previewSticker) return
+    const tag = (previewTagInput || '').trim()
+    if (!tag) {
+      wx.showToast({ title: '请输入标签', icon: 'none' })
       return
     }
 
-    wx.setClipboardData({
-      data: tags.join(', '),
-      success: () => wx.showToast({ title: '已复制标签', icon: 'none' })
+    const tags = previewSticker.tags || []
+    if (tags.includes(tag)) {
+      wx.showToast({ title: '标签已存在', icon: 'none' })
+      return
+    }
+
+    const updated = storage.updateSticker(previewSticker.id, {
+      tags: [...tags, tag]
     })
+    if (!updated) {
+      wx.showToast({ title: '添加失败', icon: 'none' })
+      return
+    }
+
+    this.setData({ previewSticker: updated, previewTagInput: '', showTagEditor: false })
+    this.loadStickers()
+    wx.showToast({ title: '已添加标签', icon: 'none' })
   },
 
   onTapAdd() {

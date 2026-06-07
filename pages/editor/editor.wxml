@@ -1,4 +1,4 @@
-﻿<view class="editor-page {{editorMode === 'preview' ? 'preview-mode' : 'edit-mode'}}">
+<view class="editor-page {{editorMode === 'preview' ? 'preview-mode' : 'edit-mode'}}">
   <view class="top-bar">
     <view class="top-left">
       <view class="icon-btn back-btn" bindtap="onTapBack" aria-label="返回">
@@ -65,6 +65,28 @@
     </view>
   </view>
 
+  <view class="selected-more-mask {{showSelectedMorePanel ? 'show' : ''}}" bindtap="closeSelectedMorePanel"></view>
+  <view class="selected-more-sheet {{showSelectedMorePanel ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="selected-more-header">
+      <text>{{selectedMoreTitle}}</text>
+      <view class="selected-more-close" bindtap="closeSelectedMorePanel">
+        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+    </view>
+    <view class="selected-more-grid">
+      <view
+        class="selected-more-item"
+        wx:for="{{selectedMoreActions}}"
+        wx:key="key"
+        bindtap="onSelectedMoreAction"
+        data-action="{{item.key}}"
+      >
+        <image class="selected-more-icon" src="{{item.icon}}" mode="aspectFit" />
+        <text>{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
   <view class="page-dots-bar" wx:if="{{bookPages.length > 0}}">
     <view class="page-nav-controls">
       <view class="page-nav-btn {{currentPageIndex <= 0 ? 'disabled' : ''}}" bindtap="onTapPrevPage" aria-label="上一页">
@@ -81,7 +103,7 @@
       <view class="page-nav-btn" bindtap="addNewPage" aria-label="添加下一页">
         <image class="ui-icon" src="/assets/icons/plus.svg" mode="aspectFit" />
       </view>
-      <view class="page-nav-btn danger" bindtap="deleteCurrentPage" aria-label="删除此页" wx:if="{{bookPages.length > 1}}">
+      <view class="page-nav-btn danger" bindtap="deleteCurrentPage" aria-label="删除此页" wx:if="{{bookPages.length > 1 && !isCoverPage}}">
         <image class="ui-icon" src="/assets/icons/trash-2.svg" mode="aspectFit" />
       </view>
     </view>
@@ -150,7 +172,7 @@
 
   <view class="panel {{showTextPanel ? 'show' : ''}}" catchtap="stopPropagation" style="{{showTextPanel && keyboardHeight > 0 ? 'padding-bottom:' + keyboardHeight + 'px;' : ''}}">
     <view class="panel-header">
-      <text class="panel-title">{{textPanelMode === 'edit' ? '编辑文字' : '添加文字'}}</text>
+      <text class="panel-title">{{textPanelMode === 'edit' ? '编辑文字' : textPanelMode === 'rect' ? '矩形文字' : '添加文字'}}</text>
       <view class="panel-close" bindtap="toggleTextPanel">
         <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
       </view>
@@ -177,7 +199,7 @@
         </view>
       </scroll-view>
 
-      <view class="btn btn-primary" bindtap="addText">{{textPanelMode === 'edit' ? '保存文字' : '添加到画布'}}</view>
+      <view class="btn btn-primary" bindtap="addText">{{textPanelMode === 'add' ? '添加到画布' : '保存文字'}}</view>
     </view>
   </view>
 

@@ -87,8 +87,8 @@ Page({
       const lastPage = pages[pages.length - 1]
       wx.navigateTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${lastPage.id}` })
     } else {
-      // 没有页面时创建新页面再打开
-      const newPage = storage.createPage(bookId)
+      // 没有页面时先补封面页
+      const newPage = storage.ensureCoverPage(bookId)
       wx.navigateTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${newPage.id}` })
     }
   },

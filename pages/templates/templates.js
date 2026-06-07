@@ -5,7 +5,7 @@ const storageUtil = require('../../utils/storage')
 Page({
   data: {
     categories: templateUtil.TEMPLATE_CATEGORIES,
-    activeCategory: '鍏ㄩ儴',
+    activeCategory: '全部',
     templates: [],
     bookId: ''
   },
@@ -13,7 +13,7 @@ Page({
   onLoad(options) {
     this.setData({
       bookId: options.bookId || '',
-      templates: templateUtil.getTemplates('鍏ㄩ儴')
+      templates: templateUtil.getTemplates('全部')
     })
   },
 
@@ -30,6 +30,7 @@ Page({
     const bookId = this.data.bookId
 
     if (bookId) {
+      storageUtil.ensureCoverPage(bookId)
       const page = storageUtil.createPage(bookId)
       wx.redirectTo({
         url: `/pages/editor/editor?bookId=${bookId}&pageId=${page.id}&templateId=${templateId}`
@@ -38,7 +39,13 @@ Page({
     }
 
     const books = storageUtil.getBooks()
+    if (books.length === 0) {
+      wx.showToast({ title: '请先创建手账本', icon: 'none' })
+      return
+    }
+
     if (books.length === 1) {
+      storageUtil.ensureCoverPage(books[0].id)
       const page = storageUtil.createPage(books[0].id)
       wx.redirectTo({
         url: `/pages/editor/editor?bookId=${books[0].id}&pageId=${page.id}&templateId=${templateId}`
@@ -46,15 +53,39 @@ Page({
       return
     }
 
-    const names = books.map(b => b.name)
-    wx.showActionSheet({
-      itemList: names,
-      success: (res) => {
-        const book = books[res.tapIndex]
+    this.showBookPickerForTemplate(books, templateId, 0)
+  },
+
+  showBookPickerForTemplate(books, templateId, startIndex) {
+    const pageSize = 5
+    const safeStart = Math.max(0, Math.min(startIndex, Math.max(0, books.length - 1)))
+    const pageBooks = books.slice(safeStart, safeStart + pageSize)
+    const actions = pageBooks.map((book, i) => ({
+      label: `${safeStart + i + 1}. ${book.name || '未命名手账'}`.slice(0, 18),
+      fn: () => {
+        storageUtil.ensureCoverPage(book.id)
         const page = storageUtil.createPage(book.id)
         wx.redirectTo({
           url: `/pages/editor/editor?bookId=${book.id}&pageId=${page.id}&templateId=${templateId}`
         })
+      }
+    }))
+
+    if (safeStart + pageSize < books.length) {
+      actions.push({ label: '下一组', fn: () => this.showBookPickerForTemplate(books, templateId, safeStart + pageSize) })
+    } else if (safeStart > 0) {
+      actions.push({ label: '上一组', fn: () => this.showBookPickerForTemplate(books, templateId, Math.max(0, safeStart - pageSize)) })
+    }
+
+    wx.showActionSheet({
+      itemList: actions.map(item => item.label),
+      success: (res) => {
+        const action = actions[res.tapIndex]
+        if (action) action.fn()
+      },
+      fail: (err) => {
+        if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) return
+        console.warn('[templates] show book picker failed:', err)
       }
     })
   }

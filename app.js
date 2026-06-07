@@ -30,27 +30,51 @@ App({
   },
 
   loadFonts() {
-    wx.loadFontFace({
-      family: 'LXGW Yozai',
-      source: 'url("https://repo.huaweicloud.com/CTAN/fonts/lxgw-fonts/LXGWYozai-Regular.ttf")',
-      global: true
-    })
+    const fontSources = [
+      'https://github.com/lxgw/yozai-font/releases/latest/download/Yozai-Regular.ttf',
+      'https://repo.huaweicloud.com/CTAN/fonts/lxgw-fonts/LXGWYozai-Regular.ttf'
+    ]
+    this.globalData.fontsReady = false
+
+    if (!wx.loadFontFace) {
+      console.warn('[font] 当前基础库不支持 wx.loadFontFace')
+      return
+    }
+
+    const tryLoad = (index = 0) => {
+      const url = fontSources[index]
+      if (!url) {
+        this.globalData.fontsReady = false
+        console.warn('[font] LXGW Yozai load failed, fallback to system fonts')
+        return
+      }
+
+      wx.loadFontFace({
+        family: 'LXGW Yozai',
+        source: `url("${url}")`,
+        global: true,
+        success: () => {
+          this.globalData.fontsReady = true
+          console.log('[font] LXGW Yozai loaded:', url)
+        },
+        fail: () => {
+          tryLoad(index + 1)
+        }
+      })
+    }
+
+    tryLoad()
   },
 
   initStorage() {
     let books = wx.getStorageSync('journal_books') || []
     if (books.length === 0) {
-      const defaultBook = {
-        id: storage.generateId(),
+      storage.createBook({
         name: '默认手帐本',
         cover: 'default',
-        theme: 'cream',
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        pages: []
-      }
-      books = [defaultBook]
-      wx.setStorageSync('journal_books', books)
+        theme: 'cream'
+      })
+      books = storage.getBooks()
     }
 
     const stickers = wx.getStorageSync('sticker_assets') || []
@@ -65,6 +89,7 @@ App({
       A5: { width: 690, height: 976 },
       square: { width: 690, height: 690 }
     },
-    currentTheme: 'cream'
+    currentTheme: 'cream',
+    fontsReady: false
   }
 })

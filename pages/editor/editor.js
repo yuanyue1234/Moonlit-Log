@@ -1,4 +1,4 @@
-﻿// pages/editor/editor.js - 手账页编辑器（完全重写 - 修复所有 bug）
+// pages/editor/editor.js - 手账页编辑器（完全重写 - 修复所有 bug）
 const storage = require('../../utils/storage')
 const themeUtil = require('../../utils/theme')
 const templateUtil = require('../../utils/template')
@@ -85,10 +85,17 @@ Page({
     pageId: '',
     bookName: '',
     currentTheme: null,
+    bookPages: [],
+    currentPageIndex: 0,
+    isCoverPage: false,
+    pendingStickerId: '',
     elements: [],
     selectedId: null,
     selectedElement: null,
     copiedStyleType: '',
+    showSelectedMorePanel: false,
+    selectedMoreTitle: '',
+    selectedMoreActions: [],
     background: '#FFFFFF',
     bgPattern: 'blank',
     showBgPanel: false,
@@ -166,7 +173,7 @@ Page({
   maxHistory: 50,
 
   onLoad(options) {
-    const { bookId, pageId, templateId, mode } = options || {}
+    const { bookId, pageId, templateId, mode, stickerId } = options || {}
     const book = storage.getBookById(bookId)
     if (!book) {
       wx.showToast({ title: '手账本不存在', icon: 'none' })
@@ -185,27 +192,24 @@ Page({
     }
 
     if (!page) {
-      page = storage.createPage(bookId, {
-        background: themeInfo.pageBackgrounds[0]
-      })
+      const pages = storage.getPages(bookId)
+      page = pages.length === 0
+        ? storage.ensureCoverPage(bookId)
+        : storage.createPage(bookId, { background: themeInfo.pageBackgrounds[0] })
     }
 
-    // 应用模板
-    if (templateId) {
+    // 应用模板。封面页是系统生成的手账首页，不允许被模板替换。
+    if (templateId && page.role !== 'cover') {
       const tmpl = templateUtil.getTemplateById(templateId)
       if (tmpl) {
-        page.elements = (tmpl.elements || []).map((el, i) => ({
-          ...el,
-          id: 'el_' + Date.now() + '_' + i,
-          width: el.width || 100,
-          height: el.height || 100,
-          rotation: 0,
-          scaleX: 1,
-          scaleY: 1,
-          zIndex: i
-        }))
+        page.elements = this._buildTemplateElements(tmpl, page.elements)
         page.background = tmpl.background || page.background
-        storage.updatePage(page.id, { elements: page.elements, background: page.background })
+        storage.updatePage(page.id, {
+          elements: page.elements,
+          background: page.background,
+          bgPattern: page.bgPattern || 'blank',
+          bgTexture: page.bgTexture || 'none'
+        })
       }
     }
 
@@ -226,10 +230,12 @@ Page({
       templates: templateUtil.getTemplates(),
       templateCategories: templateUtil.TEMPLATE_CATEGORIES,
       // 页面导航
-      bookPages: allPages.map((p, i) => ({ id: p.id, index: i })),
+      bookPages: this._buildBookPageItems(allPages),
       currentPageIndex: currentPageIndex >= 0 ? currentPageIndex : 0,
+      isCoverPage: page.role === 'cover',
       editorMode: mode === 'preview' ? 'preview' : 'edit',
-      flipClass: ''
+      flipClass: '',
+      pendingStickerId: stickerId || ''
     })
 
     // 初始化历史
@@ -264,8 +270,8 @@ Page({
     }
     // 立即保存（不用防抖）
     if (this._saveTimer) clearTimeout(this._saveTimer)
-    const { pageId, elements, background, bgPattern } = this.data
-    if (pageId) storage.updatePage(pageId, { elements, background, bgPattern })
+    const { pageId, elements, background, bgPattern, bgTexture } = this.data
+    if (pageId) storage.updatePage(pageId, { elements, background, bgPattern, bgTexture })
     // 清理图片缓存
     imageCache.clear()
     textureCache.clear()
@@ -286,7 +292,9 @@ Page({
         canvasNode = canvas
         canvasCtx = canvas.getContext('2d')
 
-        const windowInfo = wx.getWindowInfo()
+        const windowInfo = typeof wx.getWindowInfo === 'function'
+          ? wx.getWindowInfo()
+          : wx.getSystemInfoSync()
         pxRatio = windowInfo.pixelRatio || 2
 
         // canvas 逻辑尺寸 (px)
@@ -296,11 +304,15 @@ Page({
         // 设置 canvas 物理尺寸
         canvas.width = canvasPxW * pxRatio
         canvas.height = canvasPxH * pxRatio
+        if (typeof canvasCtx.setTransform === 'function') {
+          canvasCtx.setTransform(1, 0, 0, 1, 0, 0)
+        }
         canvasCtx.scale(pxRatio, pxRatio)
 
         // 获取 canvas 在屏幕上的位置
         this.refreshCanvasRect()
         this.renderCanvas()
+        this._addPendingStickerFromOptions()
       })
   },
 
@@ -319,8 +331,10 @@ Page({
     if (renderScheduled) return
     renderScheduled = true
 
-    // 使用 requestAnimationFrame 确保渲染同步
-    canvasNode.requestAnimationFrame(() => {
+    const raf = typeof canvasNode.requestAnimationFrame === 'function'
+      ? canvasNode.requestAnimationFrame.bind(canvasNode)
+      : (cb) => setTimeout(cb, 16)
+    raf(() => {
       renderScheduled = false
       this._doRender()
     })
@@ -410,62 +424,91 @@ Page({
     const w = canvasPxW
     const h = canvasPxH
 
-    // 纹理缓存：避免每次重绘都执行数千次循环
     const cacheKey = texture + '_' + w + 'x' + h + '_' + (isLight ? 'L' : 'D')
     let offCanvas = textureCache.get(cacheKey)
 
     if (!offCanvas) {
-      // 缓存未命中，渲染到 OffscreenCanvas
       try {
         offCanvas = wx.createOffscreenCanvas({ type: '2d', width: w, height: h })
       } catch (e) {
         return
       }
       const offCtx = offCanvas.getContext('2d')
-      const textureColor = isLight ? 'rgba(0, 0, 0, ' : 'rgba(255, 255, 255, '
+      let seed = 2166136261
+      for (let i = 0; i < cacheKey.length; i++) {
+        seed ^= cacheKey.charCodeAt(i)
+        seed = Math.imul(seed, 16777619)
+      }
+      const rand = () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0
+        return seed / 4294967296
+      }
 
-      if (texture === 'grain') {
-        offCtx.globalAlpha = 0.08
-        for (let i = 0; i < 3000; i++) {
-          const x = Math.random() * w
-          const y = Math.random() * h
-          const size = Math.random() * 2 + 0.5
-          offCtx.fillStyle = textureColor + (Math.random() * 0.5 + 0.2) + ')'
+      const ink = isLight ? [76, 62, 46] : [255, 246, 226]
+      const warm = isLight ? [188, 152, 104] : [255, 230, 180]
+      const rgba = (rgb, alpha) => `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`
+
+      const wash = offCtx.createLinearGradient(0, 0, w, h)
+      wash.addColorStop(0, rgba(warm, isLight ? 0.018 : 0.035))
+      wash.addColorStop(0.55, rgba(ink, isLight ? 0.008 : 0.018))
+      wash.addColorStop(1, rgba(warm, isLight ? 0.024 : 0.04))
+      offCtx.fillStyle = wash
+      offCtx.fillRect(0, 0, w, h)
+
+      const drawSpeckles = (count, alpha, maxSize) => {
+        for (let i = 0; i < count; i++) {
+          const x = rand() * w
+          const y = rand() * h
+          const size = rand() * maxSize + 0.4
+          const tone = rand() > 0.72 ? warm : ink
+          offCtx.fillStyle = rgba(tone, alpha * (0.45 + rand() * 0.75))
           offCtx.fillRect(x, y, size, size)
         }
+      }
+
+      const drawFibers = (count, alpha, maxLen, biasAngle = 0) => {
+        offCtx.lineWidth = Math.max(0.35, pxRatio * 0.28)
+        for (let i = 0; i < count; i++) {
+          const x = rand() * w
+          const y = rand() * h
+          const len = rand() * maxLen + maxLen * 0.25
+          const angle = biasAngle + (rand() - 0.5) * Math.PI * 0.55
+          const tone = rand() > 0.55 ? warm : ink
+          offCtx.strokeStyle = rgba(tone, alpha * (0.35 + rand() * 0.9))
+          offCtx.beginPath()
+          offCtx.moveTo(x, y)
+          offCtx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len)
+          offCtx.stroke()
+        }
+      }
+
+      if (texture === 'grain') {
+        drawSpeckles(2600, isLight ? 0.045 : 0.06, 1.8)
+        drawFibers(260, isLight ? 0.035 : 0.052, 22, 0.1)
       } else if (texture === 'canvas') {
-        offCtx.globalAlpha = 0.06
-        offCtx.strokeStyle = textureColor + '0.3)'
-        offCtx.lineWidth = 0.5
+        offCtx.strokeStyle = rgba(ink, isLight ? 0.04 : 0.065)
+        offCtx.lineWidth = Math.max(0.4, pxRatio * 0.35)
         for (let x = 0; x < w; x += 4) {
-          offCtx.beginPath(); offCtx.moveTo(x, 0); offCtx.lineTo(x, h); offCtx.stroke()
+          const jitter = (rand() - 0.5) * 1.5
+          offCtx.beginPath(); offCtx.moveTo(x + jitter, 0); offCtx.lineTo(x - jitter, h); offCtx.stroke()
         }
         for (let y = 0; y < h; y += 4) {
-          offCtx.beginPath(); offCtx.moveTo(0, y); offCtx.lineTo(w, y); offCtx.stroke()
+          const jitter = (rand() - 0.5) * 1.5
+          offCtx.beginPath(); offCtx.moveTo(0, y + jitter); offCtx.lineTo(w, y - jitter); offCtx.stroke()
         }
+        drawSpeckles(900, isLight ? 0.025 : 0.04, 1.2)
       } else if (texture === 'kraft') {
-        offCtx.globalAlpha = 0.05
-        offCtx.strokeStyle = textureColor + '0.25)'
-        offCtx.lineWidth = 0.3
-        for (let i = 0; i < 600; i++) {
-          const x = Math.random() * w; const y = Math.random() * h
-          const len = Math.random() * 20 + 5; const angle = Math.random() * Math.PI
-          offCtx.beginPath(); offCtx.moveTo(x, y)
-          offCtx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len); offCtx.stroke()
-        }
-        offCtx.globalAlpha = 0.08
-        for (let i = 0; i < 1500; i++) {
-          offCtx.fillStyle = textureColor + (Math.random() * 0.4 + 0.1) + ')'
-          offCtx.fillRect(Math.random() * w, Math.random() * h, 1, 1)
-        }
+        offCtx.fillStyle = rgba(warm, isLight ? 0.045 : 0.055)
+        offCtx.fillRect(0, 0, w, h)
+        drawFibers(900, isLight ? 0.055 : 0.075, 34, Math.PI * 0.05)
+        drawSpeckles(2400, isLight ? 0.04 : 0.055, 2.4)
       } else if (texture === 'linen') {
-        offCtx.globalAlpha = 0.05
-        offCtx.strokeStyle = textureColor + '0.25)'
-        offCtx.lineWidth = 0.4
+        offCtx.strokeStyle = rgba(ink, isLight ? 0.035 : 0.06)
+        offCtx.lineWidth = Math.max(0.4, pxRatio * 0.32)
         for (let y = 0; y < h; y += 6) {
           offCtx.beginPath()
           for (let x = 0; x < w; x += 2) {
-            const offsetY = Math.sin(x * 0.1) * 0.5
+            const offsetY = Math.sin(x * 0.08 + y * 0.015) * 0.7
             if (x === 0) offCtx.moveTo(x, y + offsetY); else offCtx.lineTo(x, y + offsetY)
           }
           offCtx.stroke()
@@ -473,47 +516,52 @@ Page({
         for (let x = 0; x < w; x += 6) {
           offCtx.beginPath()
           for (let y = 0; y < h; y += 2) {
-            const offsetX = Math.sin(y * 0.1) * 0.5
+            const offsetX = Math.sin(y * 0.08 + x * 0.015) * 0.7
             if (y === 0) offCtx.moveTo(x + offsetX, y); else offCtx.lineTo(x + offsetX, y)
           }
           offCtx.stroke()
         }
+        drawSpeckles(700, isLight ? 0.02 : 0.035, 1.3)
       } else if (texture === 'watercolor') {
-        offCtx.globalAlpha = 0.06
-        const spots = [
-          { x: w * 0.3, y: h * 0.4, r: w * 0.25 },
-          { x: w * 0.7, y: h * 0.6, r: w * 0.2 },
-          { x: w * 0.5, y: h * 0.2, r: w * 0.18 },
-          { x: w * 0.2, y: h * 0.8, r: w * 0.15 },
-          { x: w * 0.8, y: h * 0.3, r: w * 0.22 }
-        ]
-        spots.forEach(spot => {
-          const gradient = offCtx.createRadialGradient(spot.x, spot.y, 0, spot.x, spot.y, spot.r)
-          gradient.addColorStop(0, textureColor + '0.15)')
-          gradient.addColorStop(1, textureColor + '0)')
+        Array.from({ length: 7 }).forEach(() => {
+          const x = rand() * w
+          const y = rand() * h
+          const r = (rand() * 0.18 + 0.12) * w
+          const gradient = offCtx.createRadialGradient(x, y, 0, x, y, r)
+          gradient.addColorStop(0, rgba(warm, isLight ? 0.055 : 0.075))
+          gradient.addColorStop(0.55, rgba(ink, isLight ? 0.018 : 0.035))
+          gradient.addColorStop(1, rgba(warm, 0))
           offCtx.fillStyle = gradient
           offCtx.fillRect(0, 0, w, h)
         })
-        offCtx.globalAlpha = 0.08
-        for (let i = 0; i < 600; i++) {
-          offCtx.fillStyle = textureColor + (Math.random() * 0.3 + 0.1) + ')'
-          offCtx.fillRect(Math.random() * w, Math.random() * h, Math.random() * 2, Math.random() * 2)
-        }
+        drawSpeckles(1200, isLight ? 0.028 : 0.045, 1.8)
+        drawFibers(180, isLight ? 0.025 : 0.04, 18, -0.15)
       }
 
       textureCache.set(cacheKey, offCanvas)
     }
 
-    // 将缓存的纹理绘制到主画布
     ctx.save()
     ctx.drawImage(offCanvas, 0, 0, w, h)
     ctx.restore()
   },
 
   _isLightColor(color = '#FFFFFF') {
-    const c = String(color)
-    if (c === 'transparent' || c.startsWith('rgba')) return false
-    const hex = c.replace('#', '')
+    const c = String(color || '#FFFFFF').trim()
+    if (c === 'transparent') return true
+
+    const rgbaMatch = c.match(/^rgba?\(([^)]+)\)$/i)
+    if (rgbaMatch) {
+      const parts = rgbaMatch[1].split(',').map(item => item.trim())
+      const r = parseInt(parts[0], 10) || 255
+      const g = parseInt(parts[1], 10) || 255
+      const b = parseInt(parts[2], 10) || 255
+      return (r * 0.299 + g * 0.587 + b * 0.114) > 180
+    }
+
+    let hex = c.replace('#', '')
+    if (hex.length === 3) hex = hex.split('').map(ch => ch + ch).join('')
+    if (hex.length !== 6) return true
     const r = parseInt(hex.slice(0, 2), 16)
     const g = parseInt(hex.slice(2, 4), 16)
     const b = parseInt(hex.slice(4, 6), 16)
@@ -707,6 +755,42 @@ Page({
     return font ? font.family : '"PingFang SC", "Microsoft YaHei", sans-serif'
   },
 
+  _drawRectText(ctx, el, w, h) {
+    const text = el.text || el.placeholderText || ''
+    if (!text) return
+
+    const scaleRatio = canvasPxW / canvasWidth
+    const fontSize = (el.textFontSize || el.fontSize || 24) * scaleRatio
+    const padding = Math.max(10 * scaleRatio, Math.min(w, h) * 0.12)
+    const maxWidth = Math.max(20, w - padding * 2)
+    const align = el.textAlign || 'center'
+    const vertical = el.textVertical || 'middle'
+
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.font = `${fontSize}px ${this._getFontFamily(el.textFontFamily || el.fontFamily || 'sans')}`
+    ctx.fillStyle = el.textColor || el.color || '#8B7B6B'
+    ctx.textAlign = align
+    ctx.textBaseline = 'middle'
+
+    const lines = this._wrapText(ctx, text, maxWidth)
+    const lineHeight = fontSize * 1.35
+    const textX = align === 'left' ? -w / 2 + padding : align === 'right' ? w / 2 - padding : 0
+    let startY
+    if (vertical === 'top') {
+      startY = -h / 2 + padding + fontSize / 2
+    } else if (vertical === 'bottom') {
+      startY = h / 2 - padding - (lines.length - 1) * lineHeight
+    } else {
+      startY = -(lines.length - 1) * lineHeight / 2
+    }
+
+    lines.forEach((line, i) => {
+      ctx.fillText(line, textX, startY + i * lineHeight)
+    })
+    ctx.restore()
+  },
+
   // 绘制装饰元素 - 新增胶带、便签、边框等
   _drawDecoration(ctx, el, w, h, scaleX, scaleY) {
     const subType = el.subType
@@ -791,9 +875,11 @@ Page({
       const shapeType = el.shapeType || 'rect'
       const fillColor = el.fillColor || 'transparent'
       const strokeColor = el.strokeColor || '#333333'
-      const strokeWidth = (el.strokeWidth || 2) * (canvasPxW / canvasWidth)
+      const rawStrokeWidth = el.strokeWidth === undefined ? 2 : el.strokeWidth
+      const strokeWidth = rawStrokeWidth * (canvasPxW / canvasWidth)
       const lineStyle = el.lineStyle || 'solid'
       const borderRadius = (el.borderRadius || 0) * (canvasPxW / canvasWidth)
+      const shouldStroke = rawStrokeWidth > 0 && strokeColor !== 'transparent'
 
       ctx.lineWidth = strokeWidth
       ctx.strokeStyle = strokeColor
@@ -816,7 +902,7 @@ Page({
           ctx.fillStyle = fillColor
           ctx.fill()
         }
-        ctx.stroke()
+        if (shouldStroke) ctx.stroke()
       } else if (shapeType === 'ellipse') {
         ctx.beginPath()
         ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2)
@@ -824,24 +910,25 @@ Page({
           ctx.fillStyle = fillColor
           ctx.fill()
         }
-        ctx.stroke()
+        if (shouldStroke) ctx.stroke()
       } else if (shapeType === 'roundRect') {
         this._roundRect(ctx, -w/2, -h/2, w, h, borderRadius)
         if (fillColor !== 'transparent') {
           ctx.fillStyle = fillColor
           ctx.fill()
         }
-        ctx.stroke()
+        if (shouldStroke) ctx.stroke()
       } else {
         // 普通矩形
         if (fillColor !== 'transparent') {
           ctx.fillStyle = fillColor
           ctx.fillRect(-w/2, -h/2, w, h)
         }
-        ctx.strokeRect(-w/2, -h/2, w, h)
+        if (shouldStroke) ctx.strokeRect(-w/2, -h/2, w, h)
       }
 
       ctx.setLineDash([])
+      this._drawRectText(ctx, el, w, h)
     }
     // ===== 新增装饰类型 =====
     else if (subType === 'tape') {
@@ -1655,11 +1742,17 @@ Page({
     if (!src) return
     const stickerId = e.currentTarget.dataset.id
     const sticker = this.data.stickers.find(item => item.id === stickerId || item.src === src) || {}
+    this._addStickerAssetToCanvas({ ...sticker, src })
+    this.setData({ showStickerPanel: false })
+  },
+
+  _addStickerAssetToCanvas(sticker) {
+    if (!sticker || !sticker.src) return false
     const maxZ = this._getMaxZIndex()
     const newEl = {
       id: 'el_' + Date.now(),
       type: 'image',
-      src: src,
+      src: sticker.src,
       x: canvasWidth / 2,
       y: canvasHeight / 2,
       width: 200,
@@ -1671,9 +1764,26 @@ Page({
       zIndex: maxZ + 1
     }
     const elements = [...this.data.elements, newEl]
-    this.setData({ elements, selectedId: newEl.id, selectedElement: newEl, showStickerPanel: false })
+    this.setData({ elements, selectedId: newEl.id, selectedElement: newEl })
     this.pushHistory()
     this.renderCanvas()
+    return true
+  },
+
+  _addPendingStickerFromOptions() {
+    const stickerId = this.data.pendingStickerId
+    if (!stickerId || this._pendingStickerAdded) return
+    const stickers = storage.getStickers()
+    const sticker = stickers.find(item => item.id === stickerId)
+    if (!sticker) {
+      this.setData({ pendingStickerId: '' })
+      return
+    }
+    this._pendingStickerAdded = true
+    this.setData({ stickers, pendingStickerId: '' })
+    if (this._addStickerAssetToCanvas(sticker)) {
+      wx.showToast({ title: '已放入手帐', icon: 'none', duration: 900 })
+    }
   },
 
   addDecoration(e) {
@@ -1749,10 +1859,26 @@ Page({
       return
     }
 
-    if (this.data.textPanelMode === 'edit' && this.data.editingTextId) {
+    if ((this.data.textPanelMode === 'edit' || this.data.textPanelMode === 'rect') && this.data.editingTextId) {
       const id = this.data.editingTextId
+      const target = this.data.elements.find(el => el.id === id)
+      if (target && target.locked) {
+        wx.showToast({ title: '已锁定，先解锁再编辑', icon: 'none', duration: 1000 })
+        return
+      }
       const elements = this.data.elements.map(el => {
         if (el.id !== id) return el
+        if (this.data.textPanelMode === 'rect') {
+          return {
+            ...el,
+            text,
+            textColor: this.data.textColor,
+            textFontSize: this.data.textSize,
+            textFontFamily: this.data.textFontFamily,
+            textAlign: el.textAlign || 'center',
+            textVertical: el.textVertical || 'middle'
+          }
+        }
         return {
           ...el,
           text,
@@ -1883,12 +2009,31 @@ Page({
       showBgPanel: false,
       showStickerPanel: false,
       showTemplatePanel: false,
-            textPanelMode: 'edit',
+      textPanelMode: 'edit',
       editingTextId: el.id,
       textInput: el.text || '',
       textColor: el.color || this.data.textColor,
       textSize: el.fontSize || this.data.textSize,
       textFontFamily: el.fontFamily || this.data.textFontFamily
+    })
+  },
+
+  openSelectedRectTextEditor() {
+    const el = this._getSelectedElement()
+    if (!el || el.type !== 'decoration' || el.subType !== 'rect') return
+    this.setData({
+      showTextPanel: true,
+      showBgPanel: false,
+      showStickerPanel: false,
+      showTemplatePanel: false,
+      showRectPanel: false,
+      showBorderPanel: false,
+      textPanelMode: 'rect',
+      editingTextId: el.id,
+      textInput: el.text || el.placeholderText || '',
+      textColor: el.textColor || el.color || this.data.textColor,
+      textSize: el.textFontSize || el.fontSize || this.data.textSize,
+      textFontFamily: el.textFontFamily || el.fontFamily || this.data.textFontFamily
     })
   },
 
@@ -1909,10 +2054,27 @@ Page({
     }
     if (el.type === 'decoration') {
       const style = {}
-      ;['color', 'bgColor', 'borderColor', 'style'].forEach(key => {
+      ;[
+        'color',
+        'bgColor',
+        'borderColor',
+        'style',
+        'shapeType',
+        'fillColor',
+        'strokeColor',
+        'strokeWidth',
+        'lineStyle',
+        'borderRadius',
+        'textColor',
+        'textFontSize',
+        'textFontFamily',
+        'textAlign',
+        'textVertical'
+      ].forEach(key => {
         if (el[key] !== undefined) style[key] = el[key]
       })
-      return { type: 'decoration', style }
+      if (el.border) style.border = JSON.parse(JSON.stringify(el.border))
+      return { type: 'decoration', subType: el.subType, style }
     }
     return null
   },
@@ -1940,7 +2102,7 @@ Page({
       wx.showToast({ title: '已锁定，先解锁再粘贴', icon: 'none', duration: 1000 })
       return
     }
-    if (payload.type !== el.type) {
+    if (payload.type !== el.type || (payload.subType && el.subType !== payload.subType)) {
       wx.showToast({ title: '样式类型不匹配', icon: 'none', duration: 1000 })
       return
     }
@@ -1953,36 +2115,103 @@ Page({
   openSelectedMoreMenu() {
     const el = this._getSelectedElement()
     if (!el) return
-    const actions = [
-      { label: '置顶', fn: () => this.bringToFront() },
-      { label: '置底', fn: () => this.sendToBack() },
-      { label: '添加边框', fn: () => this.showBorderPanel() },
-      { label: '复制样式', fn: () => this.copySelectedStyle() },
-      { label: '粘贴样式', fn: () => this.pasteSelectedStyle() }
-    ]
-    // 图片效果选项
-    if (el.type === 'image') {
-      actions.push(
-        { label: '无效果', fn: () => this.setSelectedEffect({ currentTarget: { dataset: { effect: 'none' } } }) },
-        { label: '白边', fn: () => this.setSelectedEffect({ currentTarget: { dataset: { effect: 'white-border' } } }) },
-        { label: '纸贴', fn: () => this.setSelectedEffect({ currentTarget: { dataset: { effect: 'paper' } } }) },
-        { label: '阴影', fn: () => this.setSelectedEffect({ currentTarget: { dataset: { effect: 'shadow' } } }) }
-      )
-    }
-    // 矩形占位框可以添加图片
-    if (el.type === 'decoration' && el.subType === 'rect' && el.lineStyle === 'dashed') {
-      actions.push({ label: '添加图片', fn: () => this.replaceRectWithImage(el) })
-    }
-    if (el.border) {
-      actions.push({ label: '移除边框', fn: () => this.removeBorder() })
-    }
-    wx.showActionSheet({
-      itemList: actions.map(item => item.label),
-      success: (res) => {
-        const action = actions[res.tapIndex]
-        if (action) action.fn()
-      }
+    this.setData({
+      showSelectedMorePanel: true,
+      selectedMoreTitle: this._getSelectedMoreTitle(el),
+      selectedMoreActions: this._buildSelectedMoreActions(el),
+      showBgPanel: false,
+      showStickerPanel: false,
+      showTextPanel: false,
+      showTemplatePanel: false,
+      showRectPanel: false,
+      showBorderPanel: false
     })
+  },
+
+  _getSelectedMoreTitle(el) {
+    if (el.type === 'image') return '图片选项'
+    if (el.type === 'text') return '文字选项'
+    if (el.type === 'decoration' && el.subType === 'rect') return '矩形选项'
+    return '元素选项'
+  },
+
+  _buildSelectedMoreActions(el) {
+    if (el.type === 'image') {
+      return [
+        { key: 'effect-none', label: '无效果', icon: '/assets/icons/x.svg' },
+        { key: 'effect-white-border', label: '白边', icon: '/assets/icons/sticker.svg' },
+        { key: 'effect-paper', label: '纸贴', icon: '/assets/icons/file-text.svg' },
+        { key: 'effect-shadow', label: '阴影', icon: '/assets/icons/layers.svg' },
+        { key: 'copy-style', label: '复制样式', icon: '/assets/icons/copy.svg' },
+        { key: 'paste-style', label: '粘贴样式', icon: '/assets/icons/clipboard.svg' }
+      ]
+    }
+
+    if (el.type === 'decoration' && el.subType === 'rect') {
+      const textLabel = el.text || el.placeholderText ? '编辑文字' : '添加文字'
+      return [
+        { key: 'rect-text', label: textLabel, icon: '/assets/icons/type.svg' },
+        { key: 'rect-image', label: '添加图片', icon: '/assets/icons/image-plus.svg' },
+        { key: 'copy-style', label: '复制样式', icon: '/assets/icons/copy.svg' },
+        { key: 'paste-style', label: '粘贴样式', icon: '/assets/icons/clipboard.svg' },
+        { key: 'border-toggle', label: el.border ? '移除边框' : '添加边框', icon: '/assets/icons/square.svg' },
+        { key: 'bring-front', label: '置顶', icon: '/assets/icons/layers.svg' }
+      ]
+    }
+
+    return [
+      { key: 'bring-front', label: '置顶', icon: '/assets/icons/layers.svg' },
+      { key: 'send-back', label: '置底', icon: '/assets/icons/layers.svg' },
+      { key: 'border-toggle', label: el.border ? '移除边框' : '添加边框', icon: '/assets/icons/square.svg' },
+      { key: 'copy-style', label: '复制样式', icon: '/assets/icons/copy.svg' },
+      { key: 'paste-style', label: '粘贴样式', icon: '/assets/icons/clipboard.svg' }
+    ]
+  },
+
+  closeSelectedMorePanel() {
+    this.setData({ showSelectedMorePanel: false, selectedMoreActions: [], selectedMoreTitle: '' })
+  },
+
+  onSelectedMoreAction(e) {
+    const action = e.currentTarget.dataset.action
+    const el = this._getSelectedElement()
+    this.closeSelectedMorePanel()
+    if (!action || !el) return
+
+    const effectMap = {
+      'effect-none': 'none',
+      'effect-white-border': 'white-border',
+      'effect-paper': 'paper',
+      'effect-shadow': 'shadow'
+    }
+    if (effectMap[action]) {
+      this.setSelectedEffect({ currentTarget: { dataset: { effect: effectMap[action] } } })
+      return
+    }
+
+    switch (action) {
+      case 'rect-text':
+        this.openSelectedRectTextEditor()
+        break
+      case 'rect-image':
+        this.replaceRectWithImage(el)
+        break
+      case 'copy-style':
+        this.copySelectedStyle()
+        break
+      case 'paste-style':
+        this.pasteSelectedStyle()
+        break
+      case 'border-toggle':
+        el.border ? this.removeBorder() : this.showBorderPanel()
+        break
+      case 'bring-front':
+        this.bringToFront()
+        break
+      case 'send-back':
+        this.sendToBack()
+        break
+    }
   },
   replaceRectWithImage(rectEl) {
     wx.chooseMedia({
@@ -2224,26 +2453,44 @@ Page({
   },
 
   // ==================== 模板 ====================
+  _buildBookPageItems(pages = []) {
+    return pages.map((p, i) => ({
+      id: p.id,
+      index: i,
+      role: p.role || 'page'
+    }))
+  },
+
+  _buildTemplateElements(tmpl, baseElements = []) {
+    const fixedElements = (baseElements || [])
+      .filter(el => el.systemRole === 'theme-fixed')
+      .map((el, i) => ({ ...el, zIndex: i }))
+    const fixedIds = new Set(fixedElements.map(el => el.id))
+    const normalizedTemplate = storage.normalizePageElements(tmpl.elements || [])
+      .map((el, i) => ({
+        ...el,
+        id: fixedIds.has(el.id) ? `el_${Date.now()}_tmpl_${i}` : (el.id || `el_${Date.now()}_tmpl_${i}`),
+        zIndex: fixedElements.length + i + 1
+      }))
+    return [...fixedElements, ...normalizedTemplate]
+  },
+
   onTapTemplate(e) {
     const templateId = e.currentTarget.dataset.id
     const tmpl = templateUtil.getTemplateById(templateId)
     if (!tmpl) return
+    const currentPage = this.data.bookPages && this.data.bookPages[this.data.currentPageIndex]
+    if (currentPage && currentPage.role === 'cover') {
+      wx.showToast({ title: '封面页不套用模板', icon: 'none' })
+      return
+    }
 
     wx.showModal({
       title: '应用模板',
       content: '使用模板会替换当前页面内容，确定吗？',
       success: (res) => {
         if (res.confirm) {
-          const elements = (tmpl.elements || []).map((el, i) => ({
-            ...el,
-            id: 'el_' + Date.now() + '_' + i,
-            width: el.width || 100,
-            height: el.height || 100,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-            zIndex: i
-          }))
+          const elements = this._buildTemplateElements(tmpl, this.data.elements)
           this.setData({
             elements,
             background: tmpl.background || '#FFFFFF',
@@ -2298,7 +2545,8 @@ Page({
 
   toggleMoreMenu() {
     const { bookPages, currentPageIndex } = this.data
-    const canDeletePage = bookPages && bookPages.length > 1
+    const currentPage = bookPages && bookPages[currentPageIndex]
+    const canDeletePage = bookPages && bookPages.length > 1 && currentPage && currentPage.role !== 'cover'
     const actions = [
       { label: '保存', fn: () => { this._syncSave(); wx.showToast({ title: '已保存', icon: 'none' }) } },
       { label: '导出到相册', fn: () => this.exportImage() },
@@ -2318,6 +2566,10 @@ Page({
 
   _confirmDeletePage() {
     const { bookPages, currentPageIndex, bookId } = this.data
+    if (bookPages[currentPageIndex] && bookPages[currentPageIndex].role === 'cover') {
+      wx.showToast({ title: '封面页不能删除', icon: 'none' })
+      return
+    }
     wx.showModal({
       title: '删除此页',
       content: '确定删除当前页面吗？此操作不可撤销。',
@@ -2330,8 +2582,8 @@ Page({
           const newIndex = Math.max(0, currentPageIndex - 1)
           const remaining = storage.getPages(bookId)
           if (remaining.length === 0) {
-            // 如果删完了，创建一个新页
-            const newPage = storage.createPage(bookId)
+            // 如果删完了，补一个封面页
+            const newPage = storage.ensureCoverPage(bookId)
             wx.redirectTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${newPage.id}` })
           } else {
             wx.redirectTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${remaining[newIndex].id}` })
@@ -2388,20 +2640,46 @@ Page({
       return
     }
     const sorted = [...elements].sort((a, b) => (b.zIndex || 0) - (a.zIndex || 0))
-    const names = sorted.map(el => {
-      if (el.type === 'text') return `文字 ${el.text.substring(0, 8)}`
-      if (el.type === 'sticker') return el.src
-      if (el.type === 'decoration') return '装饰'
-      return '素材'
-    })
+    this._showLayerActionSheet(sorted, 0)
+  },
+
+  _getLayerName(el, index) {
+    const prefix = `${index + 1}. `
+    if (el.type === 'text') return prefix + `文字 ${(el.text || '').substring(0, 8) || '未命名'}`
+    if (el.type === 'image') return prefix + '图片素材'
+    if (el.type === 'sticker') return prefix + '贴纸'
+    if (el.type === 'decoration' && el.subType === 'rect') return prefix + '矩形'
+    if (el.type === 'decoration') return prefix + '装饰'
+    return prefix + '素材'
+  },
+
+  _showLayerActionSheet(sorted, startIndex) {
+    const pageSize = 5
+    const safeStart = Math.max(0, Math.min(startIndex, Math.max(0, sorted.length - 1)))
+    const pageItems = sorted.slice(safeStart, safeStart + pageSize)
+    const actions = pageItems.map((el, i) => ({
+      label: this._getLayerName(el, safeStart + i),
+      fn: () => {
+        this.setData({ selectedId: el.id, selectedElement: el })
+        this.renderCanvas()
+      }
+    }))
+
+    if (safeStart + pageSize < sorted.length) {
+      actions.push({ label: '下一组', fn: () => this._showLayerActionSheet(sorted, safeStart + pageSize) })
+    } else if (safeStart > 0) {
+      actions.push({ label: '上一组', fn: () => this._showLayerActionSheet(sorted, Math.max(0, safeStart - pageSize)) })
+    }
+
     wx.showActionSheet({
-      itemList: names,
+      itemList: actions.map(item => item.label),
       success: (res) => {
-        const el = sorted[res.tapIndex]
-        if (el) {
-          this.setData({ selectedId: el.id, selectedElement: el })
-          this.renderCanvas()
-        }
+        const action = actions[res.tapIndex]
+        if (action) action.fn()
+      },
+      fail: (err) => {
+        if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) return
+        console.warn('[editor] showLayerPanel failed:', err)
       }
     })
   },
@@ -2418,17 +2696,21 @@ Page({
     const selectedText = opening && this.data.selectedElement && this.data.selectedElement.type === 'text'
       ? this.data.selectedElement
       : null
+    const selectedRect = opening && this.data.selectedElement && this.data.selectedElement.type === 'decoration' && this.data.selectedElement.subType === 'rect'
+      ? this.data.selectedElement
+      : null
     this.setData({
       showTextPanel: opening,
       showBgPanel: false,
       showStickerPanel: false,
       showTemplatePanel: false,
-            textPanelMode: selectedText ? 'edit' : 'add',
-      editingTextId: selectedText ? selectedText.id : '',
-      textInput: selectedText ? selectedText.text || '' : '',
-      textColor: selectedText ? selectedText.color || this.data.textColor : this.data.textColor,
-      textSize: selectedText ? selectedText.fontSize || this.data.textSize : this.data.textSize,
-      textFontFamily: selectedText ? selectedText.fontFamily || this.data.textFontFamily : this.data.textFontFamily
+      showRectPanel: false,
+      textPanelMode: selectedText ? 'edit' : selectedRect ? 'rect' : 'add',
+      editingTextId: selectedText ? selectedText.id : selectedRect ? selectedRect.id : '',
+      textInput: selectedText ? selectedText.text || '' : selectedRect ? selectedRect.text || selectedRect.placeholderText || '' : '',
+      textColor: selectedText ? selectedText.color || this.data.textColor : selectedRect ? selectedRect.textColor || selectedRect.color || this.data.textColor : this.data.textColor,
+      textSize: selectedText ? selectedText.fontSize || this.data.textSize : selectedRect ? selectedRect.textFontSize || selectedRect.fontSize || this.data.textSize : this.data.textSize,
+      textFontFamily: selectedText ? selectedText.fontFamily || this.data.textFontFamily : selectedRect ? selectedRect.textFontFamily || selectedRect.fontFamily || this.data.textFontFamily : this.data.textFontFamily
     })
   },
   toggleTemplatePanel() {
@@ -2444,7 +2726,19 @@ Page({
     })
   },
   closeAllPanels() {
-    this.setData({ showBgPanel: false, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false, showRectPanel: false, showBorderPanel: false, editingTextId: '', textPanelMode: 'add' })
+    this.setData({
+      showBgPanel: false,
+      showStickerPanel: false,
+      showTextPanel: false,
+      showTemplatePanel: false,
+      showRectPanel: false,
+      showBorderPanel: false,
+      showSelectedMorePanel: false,
+      selectedMoreActions: [],
+      selectedMoreTitle: '',
+      editingTextId: '',
+      textPanelMode: 'add'
+    })
   },
   // 矩形工具方法
   onRectShape(e) {
@@ -2557,7 +2851,7 @@ Page({
   _addSavedImageElement(src) {
     // 预加载图片以获取尺寸
     if (!canvasNode) {
-      wx.showToast({ title: ''画布未就绪'', icon: ''none'' })
+      wx.showToast({ title: '画布未就绪', icon: 'none' })
       return
     }
     loadImage(src, canvasNode).then(entry => {
@@ -2613,10 +2907,11 @@ Page({
         this.pushHistory()
         this.renderCanvas()
       })
-    }
   },
 
-  stopPropagation() {},
+  stopPropagation() {
+    // 阻止事件冒泡
+  },
 
   onTapBack() {
     this.savePage()
@@ -2662,6 +2957,10 @@ Page({
 
   deleteCurrentPage() {
     const { bookPages, currentPageIndex, bookId } = this.data
+    if (bookPages[currentPageIndex] && bookPages[currentPageIndex].role === 'cover') {
+      wx.showToast({ title: '封面页不能删除', icon: 'none' })
+      return
+    }
     if (bookPages.length <= 1) {
       wx.showToast({ title: '至少保留一页', icon: 'none' })
       return
@@ -2681,7 +2980,7 @@ Page({
           const remaining = storage.getPages(bookId)
 
           if (remaining.length === 0) {
-            const newPage = storage.createPage(bookId)
+            const newPage = storage.ensureCoverPage(bookId)
             wx.redirectTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${newPage.id}` })
           } else {
             wx.redirectTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${remaining[newIndex].id}` })
@@ -2718,8 +3017,9 @@ Page({
       bgTexture: page.bgTexture || 'none',
       selectedId: null,
       selectedElement: null,
-      bookPages: allPages.map((p, i) => ({ id: p.id, index: i })),
+      bookPages: this._buildBookPageItems(allPages),
       currentPageIndex: newIndex >= 0 ? newIndex : pageIndex,
+      isCoverPage: page.role === 'cover',
       stickers: storage.getStickers()
     })
 
