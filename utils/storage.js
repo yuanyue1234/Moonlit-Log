@@ -14,22 +14,15 @@ const STORAGE_KEYS = {
 }
 
 const COLLECTIBLE_GROUPS = [
-  { key: 'С��Ʊ��', kind: 'card' },
-  { key: '�ܱ߰�װ', kind: 'packaging' },
-  { key: '���¼', kind: 'ticket' },
-  { key: '�����ղ�', kind: 'other' }
-]
-
-// ========== 手账本管�?==========
-
-function getBooks() {
-
-const COLLECTIBLE_GROUPS = [
   { key: '小卡票根', kind: 'card' },
   { key: '周边包装', kind: 'packaging' },
   { key: '活动记录', kind: 'ticket' },
   { key: '其他收藏', kind: 'other' }
 ]
+
+// ========== 手账本管理 ==========
+
+function getBooks() {
   return wx.getStorageSync(STORAGE_KEYS.BOOKS) || []
 }
 
@@ -52,11 +45,6 @@ function createBook(data) {
     theme: data.theme || 'cream',
     tags: data.tags || [],
     createdAt: Date.now(),
-    group: sticker.group || 'С��Ʊ��',
-    kind: sticker.kind || 'other',
-    activityName: sticker.activityName || '',
-    location: sticker.location || '',
-    createdAtDate: sticker.createdAtDate || new Date().toISOString().slice(0, 10),
     updatedAt: Date.now(),
     pages: []
   }
@@ -85,11 +73,11 @@ function deleteBook(bookId) {
   let books = getBooks()
   books = books.filter(b => b.id !== bookId)
   saveBooks(books)
-  // 同时删除该手账本的所有页�?
+  // 同时删除该手账本的所有页面
   deletePagesByBookId(bookId)
 }
 
-// ========== 手账页管�?==========
+// ========== 手账页管理 ==========
 
 function getPages(bookId) {
   const allPages = wx.getStorageSync(STORAGE_KEYS.PAGES) || []
@@ -106,7 +94,7 @@ function getPages(bookId) {
   return [...ordered, ...strayPages]
 }
 
-// 批量获取所有手账本的页数（优化N+1查询�?
+// 批量获取所有手账本的页数（优化N+1查询）
 function getBookPageCounts() {
   const allPages = wx.getStorageSync(STORAGE_KEYS.PAGES) || []
   const counts = {}
@@ -479,11 +467,6 @@ function createPage(bookId, data = {}) {
     role: data.role || (shouldBuildCover ? 'cover' : 'page'),
     elements: normalizePageElements(data.elements || (shouldBuildCover ? buildCoverPageElements(book, themeInfo) : defaultPage ? defaultPage.elements : [])),
     createdAt: Date.now(),
-    group: sticker.group || 'С��Ʊ��',
-    kind: sticker.kind || 'other',
-    activityName: sticker.activityName || '',
-    location: sticker.location || '',
-    createdAtDate: sticker.createdAtDate || new Date().toISOString().slice(0, 10),
     updatedAt: Date.now()
   }
   allPages.push(newPage)
@@ -516,7 +499,7 @@ function deletePage(pageId) {
   if (page) {
     allPages = allPages.filter(p => p.id !== pageId)
     savePages(allPages)
-    // 从手账本中移�?
+    // 从手账本中移除
     const books = getBooks()
     const book = books.find(b => b.id === page.bookId)
     if (book) {
@@ -561,7 +544,6 @@ function saveSticker(sticker) {
     originalWidth: sticker.originalWidth || 0,
     originalHeight: sticker.originalHeight || 0,
     createdAt: Date.now(),
-    group: sticker.group || 'С��Ʊ��',
     kind: sticker.kind || 'other',
     activityName: sticker.activityName || '',
     location: sticker.location || '',
@@ -585,7 +567,7 @@ function deleteSticker(stickerId) {
   let stickers = wx.getStorageSync(STORAGE_KEYS.STICKERS) || []
   const sticker = stickers.find(s => s.id === stickerId)
 
-  // 删除关联的文�?
+  // 删除关联的文件
   if (sticker && sticker.src && sticker.src.indexOf(wx.env.USER_DATA_PATH) === 0) {
     try {
       const fs = wx.getFileSystemManager()
