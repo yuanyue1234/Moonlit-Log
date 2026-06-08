@@ -198,13 +198,13 @@
 
   <view class="panel {{showTextPanel ? 'show' : ''}}" catchtap="stopPropagation" style="{{showTextPanel && keyboardHeight > 0 ? 'padding-bottom:' + keyboardHeight + 'px;' : ''}}">
     <view class="panel-header">
-      <text class="panel-title">{{textPanelMode === 'edit' ? '编辑文字' : textPanelMode === 'rect' ? '矩形文字' : '添加文字'}}</text>
+      <text class="panel-title">{{textPanelMode === 'edit' ? '编辑文字' : textPanelMode === 'rect' ? '矩形文字' : textPanelMode === 'location' ? '添加地点' : '添加文字'}}</text>
       <view class="panel-close" bindtap="toggleTextPanel">
         <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
       </view>
     </view>
     <view class="panel-body">
-      <textarea class="text-input" placeholder="输入文字内容" placeholder-class="input-placeholder" value="{{textInput}}" bindinput="onTextInput" maxlength="200" auto-height />
+      <textarea class="text-input" placeholder="{{textPanelMode === 'location' ? '输入地点名称...' : '输入文字内容'}}" placeholder-class="input-placeholder" value="{{textInput}}" bindinput="onTextInput" maxlength="200" auto-height />
 
       <text class="eyebrow">字体</text>
       <view class="font-list">
@@ -225,7 +225,7 @@
         </view>
       </scroll-view>
 
-      <view class="btn btn-primary" bindtap="addText">{{textPanelMode === 'add' ? '添加到画布' : '保存文字'}}</view>
+      <view class="btn btn-primary" bindtap="addText">{{textPanelMode === 'location' ? '添加地点' : textPanelMode === 'add' ? '添加到画布' : '保存文字'}}</view>
     </view>
   </view>
 

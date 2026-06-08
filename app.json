@@ -13,12 +13,6 @@
     "backgroundColor": "#1a1a1a",
     "backgroundTextStyle": "light"
   },
-  "permission": {
-    "scope.userLocation": {
-      "desc": "你的位置信息将用于添加到「地点」手帐组件"
-    }
-  },
-  "requiredPrivateInfos": ["chooseLocation"],
   "tabBar": {
     "color": "#8b949e",
     "selectedColor": "#00d992",

@@ -2015,30 +2015,13 @@ Page({
   },
 
   _addLocationWidget() {
-    wx.chooseLocation({
-      success: (res) => {
-        if (res.name) {
-          const text = res.address
-            ? `📍 ${res.name} · ${res.address}`
-            : `📍 ${res.name}`
-          this._addNowTextWidget(text)
-        } else {
-          wx.showToast({ title: '未获取到位置名称', icon: 'none' })
-        }
-      },
-      fail: (err) => {
-        if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) {
-          // 用户取消，不打扰
-          return
-        }
-        // 用户拒绝授权或定位未开启
-        wx.showModal({
-          title: '需要位置权限',
-          content: '请在「设置 → 隐私 → 位置信息」中允许小程序使用位置',
-          confirmText: '知道了',
-          showCancel: false
-        })
-      }
+    // 手动输入地点，避免敏感权限
+    this.setData({
+      showTextPanel: true,
+      textInput: '',
+      editingTextId: '',
+      textPanelMode: 'location',
+      textPlaceholder: '输入地点名称...'
     })
   },
 
@@ -2335,6 +2318,33 @@ Page({
         textPanelMode: 'add'
       })
       this._updateToolbarFixedStyle()
+      this.pushHistory()
+      this.renderCanvas()
+      return
+    }
+
+    // 地点模式：自动加 📍 前缀
+    if (this.data.textPanelMode === 'location') {
+      const locationText = `📍 ${text}`
+      const maxZ = this._getMaxZIndex()
+      const newEl = {
+        id: 'el_' + Date.now(),
+        type: 'text',
+        text: locationText,
+        color: this.data.textColor,
+        fontSize: this.data.textSize,
+        fontFamily: this.data.textFontFamily,
+        x: canvasWidth / 2,
+        y: canvasHeight / 2,
+        width: 400,
+        height: this.data.textSize * 2,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        zIndex: maxZ + 1
+      }
+      const elements = [...this.data.elements, newEl]
+      this.setData({ elements, selectedId: newEl.id, selectedElement: newEl, showTextPanel: false, textInput: '', editingTextId: '', textPanelMode: 'add' })
       this.pushHistory()
       this.renderCanvas()
       return

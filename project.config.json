@@ -48,8 +48,8 @@
     "disableSWC": true
   },
   "compileType": "miniprogram",
-  "libVersion": "3.3.4",
-  "appid": "wx230e08081e9ddc80",
+  "libVersion": "3.16.1",
+  "appid": "wx94a84590ab531a53",
   "projectname": "my-journal",
   "condition": {},
   "simulatorPluginLibVersion": {},
