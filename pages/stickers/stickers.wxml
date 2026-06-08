@@ -7,7 +7,8 @@
       </view>
       <view class="header-actions">
         <view class="btn btn-small btn-secondary" bindtap="onTapSort">排序</view>
-        <view class="btn btn-small btn-primary" bindtap="onTapAdd">添加</view>
+        <view class="btn btn-small {{isEditing ? 'btn-active' : 'btn-secondary'}}" bindtap="onTapEdit">{{isEditing ? '完成' : '编辑'}}</view>
+        <view class="btn btn-small btn-primary" bindtap="onTapAdd" wx:if="{{!isEditing}}">添加</view>
       </view>
     </view>
     <view class="dashed-divider"></view>
@@ -26,11 +27,12 @@
   <view class="category-title">分组</view>
   <scroll-view scroll-x class="category-scroll" enhanced show-scrollbar="{{false}}">
     <view class="category-list">
-      <view class="category-tag {{activeCategory === item.key ? 'active' : ''}}" wx:for="{{categories}}" wx:key="key" bindtap="onTapCategory" data-key="{{item.key}}">
+      <view class="category-tag {{activeCategory === item.key ? 'active' : ''}} {{isEditing && item.key !== 'all' && item.key !== 'favorite' ? 'editable' : ''}}" wx:for="{{categories}}" wx:key="key" bindtap="{{isEditing ? '' : 'onTapCategory'}}" data-key="{{item.key}}">
         {{item.name}}
+        <view class="cat-delete-badge" wx:if="{{isEditing && item.key !== 'all' && item.key !== 'favorite'}}" catchtap="onDeleteGroup" data-name="{{item.name}}">×</view>
       </view>
-      <view class="category-tag category-add-btn" bindtap="onAddGroup">
-        <text>+</text>
+      <view class="category-tag category-add-btn" bindtap="onAddGroup" wx:if="{{!isEditing}}">
+        <text class="add-icon">+</text>
       </view>
     </view>
   </scroll-view>
@@ -39,7 +41,8 @@
     <view class="masonry" wx:if="{{!isEmpty}}">
       <view class="masonry-col">
         <view class="masonry-item {{selectedStickerId === item.id ? 'selected' : ''}}" wx:for="{{colLeft}}" wx:key="id"
-          bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview">
+          bindtap="{{isEditing ? '' : 'onTapSticker'}}" data-id="{{item.id}}" bindlongpress="{{isEditing ? '' : 'onTapStickerPreview'}}">
+          <view class="edit-delete-badge" wx:if="{{isEditing}}" catchtap="editDeleteSticker" data-id="{{item.id}}">×</view>
           <image src="{{item.src}}" mode="widthFix" class="masonry-img effect-{{item.effect || 'none'}}" />
           <view class="item-info">
             <text class="item-group" wx:if="{{item.group}}">{{item.group}}</text>
@@ -47,7 +50,7 @@
               <text class="item-tag" wx:for="{{item.tags}}" wx:key="*this" wx:for-item="tag" wx:if="{{index < 2}}">{{tag}}</text>
             </view>
           </view>
-          <view class="quick-actions" wx:if="{{selectedStickerId === item.id}}" catchtap="stopPropagation">
+          <view class="quick-actions" wx:if="{{selectedStickerId === item.id && !isEditing}}" catchtap="stopPropagation">
             <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">
               <text>{{item.isFavorite ? '★' : '☆'}}</text>
             </view>
@@ -61,12 +64,13 @@
               <text>×</text>
             </view>
           </view>
-          <view class="masonry-badge" wx:if="{{item.isFavorite && selectedStickerId !== item.id}}">收藏</view>
+          <view class="masonry-badge" wx:if="{{item.isFavorite && selectedStickerId !== item.id && !isEditing}}">收藏</view>
         </view>
       </view>
       <view class="masonry-col">
         <view class="masonry-item {{selectedStickerId === item.id ? 'selected' : ''}}" wx:for="{{colRight}}" wx:key="id"
-          bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview">
+          bindtap="{{isEditing ? '' : 'onTapSticker'}}" data-id="{{item.id}}" bindlongpress="{{isEditing ? '' : 'onTapStickerPreview'}}">
+          <view class="edit-delete-badge" wx:if="{{isEditing}}" catchtap="editDeleteSticker" data-id="{{item.id}}">×</view>
           <image src="{{item.src}}" mode="widthFix" class="masonry-img effect-{{item.effect || 'none'}}" />
           <view class="item-info">
             <text class="item-group" wx:if="{{item.group}}">{{item.group}}</text>
@@ -74,7 +78,7 @@
               <text class="item-tag" wx:for="{{item.tags}}" wx:key="*this" wx:for-item="tag" wx:if="{{index < 2}}">{{tag}}</text>
             </view>
           </view>
-          <view class="quick-actions" wx:if="{{selectedStickerId === item.id}}" catchtap="stopPropagation">
+          <view class="quick-actions" wx:if="{{selectedStickerId === item.id && !isEditing}}" catchtap="stopPropagation">
             <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">
               <text>{{item.isFavorite ? '★' : '☆'}}</text>
             </view>
@@ -88,7 +92,7 @@
               <text>×</text>
             </view>
           </view>
-          <view class="masonry-badge" wx:if="{{item.isFavorite && selectedStickerId !== item.id}}">收藏</view>
+          <view class="masonry-badge" wx:if="{{item.isFavorite && selectedStickerId !== item.id && !isEditing}}">收藏</view>
         </view>
       </view>
     </view>

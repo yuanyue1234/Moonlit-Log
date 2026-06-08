@@ -323,7 +323,28 @@ Page({
   },
 
   onTapEdit() {
-    this.setData({ isEditing: !this.data.isEditing })
+    const next = !this.data.isEditing
+    this.setData({
+      isEditing: next,
+      selectedStickerId: null  // 进出编辑模式清除选中
+    })
+  },
+
+  // 编辑模式下删除分组（无需确认）
+  onDeleteGroup(e) {
+    const name = e.currentTarget.dataset.name
+    if (!name) return
+    storage.deleteGroup(name)
+    this.loadStickers()
+  },
+
+  // 编辑模式下删除贴纸（无需确认，立即删除）
+  editDeleteSticker(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    storage.deleteSticker(id)
+    this.loadStickers()
+    wx.showToast({ title: '已删除', icon: 'none' })
   },
 
   deleteSticker(id, afterDelete) {

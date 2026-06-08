@@ -55,18 +55,51 @@
 }
 .category-tag.active { background: #00d992; color: #101010; border-color: #00d992; }
 
+/* 编辑模式 — 分组标签上的小红× */
+.category-tag.editable {
+  position: relative;
+  overflow: visible;
+}
+.cat-delete-badge {
+  position: absolute;
+  top: -10rpx;
+  right: -10rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  z-index: 10;
+  box-shadow: 0 2rpx 8rpx rgba(255, 77, 79, 0.35);
+}
+
 .category-add-btn {
-  background: transparent;
-  border: 2rpx dashed rgba(0, 217, 146, 0.4);
+  background: rgba(0, 217, 146, 0.12);
+  border: 1rpx solid rgba(0, 217, 146, 0.3);
   color: #00d992;
   min-width: 64rpx;
-  font-size: 32rpx;
-  line-height: 1;
-  padding: 8rpx 20rpx;
+  height: 56rpx;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999rpx;
 }
 .category-add-btn:active {
-  background: rgba(0, 217, 146, 0.08);
+  background: #00d992;
+  color: #101010;
   border-color: #00d992;
+}
+.add-icon {
+  font-size: 36rpx;
+  font-weight: 300;
+  line-height: 1;
 }
 
 .sticker-list { height: calc(100vh - 280rpx); padding: 0 24rpx; box-sizing: border-box; }
@@ -96,6 +129,42 @@
 .masonry-item.selected {
   outline: 3rpx solid #00d992;
   outline-offset: -3rpx;
+}
+
+/* 编辑模式 — 贴纸上的小红× */
+.edit-delete-badge {
+  position: absolute;
+  top: 8rpx;
+  left: 8rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 4rpx 14rpx rgba(255, 77, 79, 0.4);
+  line-height: 1;
+}
+.edit-delete-badge:active {
+  transform: scale(1.15);
+  background: #ff7875;
+}
+
+/* 编辑按钮激活态 */
+.btn-active {
+  background: #00d992;
+  color: #101010;
+  height: 56rpx;
+  font-size: var(--font-sm);
+  padding: 0 28rpx;
+  border-radius: 12rpx;
+  font-weight: 600;
+  border: none;
 }
 
 /* 快速操作按钮 */
