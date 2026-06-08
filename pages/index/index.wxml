@@ -2,13 +2,17 @@
   <view class="header">
     <view class="header-top">
       <view>
-        <view class="page-hint eyebrow">MY JOURNAL</view>
-        <view class="page-title">我的手帐</view>
-        <view class="subtitle">{{books.length}} 本手帐</view>
+        <view class="page-hint eyebrow">COLLECTION JOURNAL</view>
+        <view class="page-title">收藏手帐</view>
+        <view class="subtitle">保存小卡、票根和周边，做成你的手帐</view>
       </view>
       <view class="header-actions">
         <view class="btn btn-icon" bindtap="onTapCreate" hover-class="action-hover">
           <text class="icon-add">+</text>
+        </view>
+        <view class="btn btn-collect" bindtap="onTapCollect" hover-class="action-hover">
+          <image class="collect-icon" src="/assets/icons/camera.svg" mode="aspectFit" />
+          <text>保存收藏物</text>
         </view>
       </view>
     </view>

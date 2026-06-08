@@ -55,6 +55,20 @@
 }
 .category-tag.active { background: #00d992; color: #101010; border-color: #00d992; }
 
+.category-add-btn {
+  background: transparent;
+  border: 2rpx dashed rgba(0, 217, 146, 0.4);
+  color: #00d992;
+  min-width: 64rpx;
+  font-size: 32rpx;
+  line-height: 1;
+  padding: 8rpx 20rpx;
+}
+.category-add-btn:active {
+  background: rgba(0, 217, 146, 0.08);
+  border-color: #00d992;
+}
+
 .sticker-list { height: calc(100vh - 280rpx); padding: 0 24rpx; box-sizing: border-box; }
 
 /* 瀑布流布局 */

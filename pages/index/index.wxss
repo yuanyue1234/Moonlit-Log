@@ -445,8 +445,8 @@
   background: rgba(0, 217, 146, 0.08);
   border-color: #00d992;
 }
-.btn-collect .icon-add {
-  font-size: 34rpx;
-  font-weight: 300;
-  color: #00d992;
+.collect-icon {
+  width: 32rpx;
+  height: 32rpx;
+  filter: invert(74%) sepia(67%) saturate(456%) hue-rotate(112deg) brightness(103%) contrast(101%);
 }

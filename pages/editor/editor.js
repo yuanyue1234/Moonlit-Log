@@ -143,6 +143,9 @@ Page({
     // 是否有未保存的图片需要异步加载
     // 输入法高度适配
     keyboardHeight: 0,
+    // 浮层定位（onReady动态计算，适配PC端和手机端）
+    toolbarTopStyle: 'top: 202rpx;',
+    toolDockTopStyle: 'top: 112rpx;',
     // 调色盘
     showColorPicker: false,
     colorPickerTarget: 'text', // 'text' or 'bg'
@@ -173,7 +176,7 @@ Page({
   maxHistory: 50,
 
   onLoad(options) {
-    const { bookId, pageId, templateId, mode, stickerId } = options || {}
+    const { bookId, pageId, templateId, mode, stickerId, fromCollect } = options || {}
     const book = storage.getBookById(bookId)
     if (!book) {
       wx.showToast({ title: '手账本不存在', icon: 'none' })
@@ -238,10 +241,20 @@ Page({
       pendingStickerId: stickerId || ''
     })
 
+    // 存储 fromCollect 标记
+    if (fromCollect === '1') {
+      this.data._fromCollect = true
+    }
+
     // 初始化历史
     this.history = [JSON.parse(JSON.stringify(page.elements || []))]
     this.historyIndex = 0
     this.updateHistoryState()
+
+    // 如果从"做成手帐"进来，自动应用收藏模板
+    if (fromCollect === '1' && stickerId) {
+      this._applyCollectTemplate()
+    }
   },
 
   onReady() {
@@ -251,6 +264,22 @@ Page({
       this.setData({ keyboardHeight: res.height > 0 ? res.height : 0 })
     }
     wx.onKeyboardHeightChange(this._keyboardHandler)
+
+    // 动态获取top-bar实际高度，用于selection-toolbar和floating-tool-dock的正确定位
+    // 避免PC端因状态栏+导航栏高度不同导致浮层跑到画布下方
+    const query = wx.createSelectorQuery()
+    query.select('.top-bar').boundingClientRect((rect) => {
+      if (!rect) return
+      const topBarBottomPx = rect.bottom  // px
+      // 转成rpx (750rpx = 屏幕宽度)
+      const screenW = wx.getWindowInfo ? wx.getWindowInfo().windowWidth : (wx.getSystemInfoSync().windowWidth)
+      const rpxRatio = 750 / screenW
+      const topBarBottomRpx = Math.ceil(topBarBottomPx * rpxRatio)
+      this.setData({
+        toolbarTopStyle: `top: ${topBarBottomRpx + 12}rpx;`,
+        toolDockTopStyle: `top: ${topBarBottomRpx + 8}rpx;`
+      })
+    }).exec()
   },
 
   onShow() {
@@ -1746,10 +1775,10 @@ Page({
     this.setData({ showStickerPanel: false })
   },
 
-  _addStickerAssetToCanvas(sticker) {
+  _addStickerAssetToCanvas(sticker, fromCollect) {
     if (!sticker || !sticker.src) return false
     const maxZ = this._getMaxZIndex()
-    const newEl = {
+    let newEl = {
       id: 'el_' + Date.now(),
       type: 'image',
       src: sticker.src,
@@ -1762,6 +1791,12 @@ Page({
       scaleY: 1,
       effect: sticker.effect || 'none',
       zIndex: maxZ + 1
+    }
+    if (fromCollect) {
+      newEl.x = 345
+      newEl.y = 320
+      newEl.width = 400
+      newEl.height = 400
     }
     const elements = [...this.data.elements, newEl]
     this.setData({ elements, selectedId: newEl.id, selectedElement: newEl })
@@ -1781,9 +1816,147 @@ Page({
     }
     this._pendingStickerAdded = true
     this.setData({ stickers, pendingStickerId: '' })
-    if (this._addStickerAssetToCanvas(sticker)) {
+    if (this._addStickerAssetToCanvas(sticker, this.data._fromCollect)) {
       wx.showToast({ title: '已放入手帐', icon: 'none', duration: 900 })
     }
+  },
+
+  _applyCollectTemplate() {
+    const { pageId } = this.data
+    const page = storage.getPageById(pageId)
+    if (!page) return
+
+    const userElements = (page.elements || []).filter(
+      el => el.systemRole !== 'cover-fixed' && el.systemRole !== 'theme-fixed'
+    )
+    if (userElements.length > 0) return
+
+    const ts = Date.now()
+    const collectElements = [
+      {
+        id: 'el_collect_title_' + ts,
+        type: 'decoration',
+        subType: 'rect',
+        shapeType: 'roundRect',
+        x: 345, y: 55,
+        width: 300, height: 48,
+        fillColor: 'transparent',
+        strokeColor: 'transparent',
+        strokeWidth: 0,
+        lineStyle: 'solid',
+        borderRadius: 0,
+        text: '\u6536\u85CF\u8BB0\u5F55',
+        textColor: '#4A3728',
+        textFontSize: 36,
+        fontFamily: 'handwriting',
+        zIndex: 10
+      },
+      {
+        id: 'el_collect_line_' + ts,
+        type: 'decoration',
+        subType: 'line',
+        x: 345, y: 95,
+        width: 300,
+        color: '#FF8BA7',
+        zIndex: 10
+      },
+      {
+        id: 'el_collect_frame_' + ts,
+        type: 'decoration',
+        subType: 'rect',
+        shapeType: 'roundRect',
+        x: 345, y: 320,
+        width: 440, height: 320,
+        fillColor: '#FFFFFF',
+        strokeColor: '#FF8BA7',
+        strokeWidth: 2,
+        lineStyle: 'dashed',
+        borderRadius: 16,
+        text: '\u6536\u85CF\u7269',
+        textColor: '#E8DDD4',
+        textFontSize: 24,
+        zIndex: 1
+      },
+      {
+        id: 'el_collect_tags_' + ts,
+        type: 'decoration',
+        subType: 'rect',
+        shapeType: 'roundRect',
+        x: 345, y: 540,
+        width: 440, height: 44,
+        fillColor: '#FFF0F5',
+        strokeColor: '#FF8BA7',
+        strokeWidth: 1,
+        lineStyle: 'solid',
+        borderRadius: 22,
+        text: '\u6807\u7B7E',
+        textColor: '#FF8BA7',
+        textFontSize: 20,
+        zIndex: 2
+      },
+      {
+        id: 'el_collect_note_' + ts,
+        type: 'decoration',
+        subType: 'rect',
+        shapeType: 'roundRect',
+        x: 345, y: 740,
+        width: 560, height: 160,
+        fillColor: '#FFFFFF',
+        strokeColor: '#E8DDD4',
+        strokeWidth: 1,
+        lineStyle: 'solid',
+        borderRadius: 12,
+        text: '\u5907\u6CE8...',
+        textColor: '#C4B5A6',
+        textFontSize: 22,
+        textAlign: 'left',
+        textVertical: 'top',
+        zIndex: 0
+      },
+      {
+        id: 'el_collect_dot1_' + ts,
+        type: 'decoration',
+        subType: 'circle',
+        x: 600, y: 130,
+        radius: 10,
+        color: '#FFD93D',
+        borderColor: '#FFFAF5',
+        zIndex: 0
+      },
+      {
+        id: 'el_collect_dot2_' + ts,
+        type: 'decoration',
+        subType: 'circle',
+        x: 95, y: 650,
+        radius: 14,
+        color: '#A8D8EA',
+        borderColor: '#FFFAF5',
+        zIndex: 0
+      }
+    ]
+
+    const existingElements = page.elements || []
+    const systemElements = existingElements.filter(
+      el => el.systemRole === 'cover-fixed' || el.systemRole === 'theme-fixed'
+    )
+    const allElements = [...systemElements, ...collectElements]
+
+    this.setData({
+      elements: allElements,
+      background: '#FFFAF5',
+      bgTexture: 'grain',
+      bgPattern: 'blank'
+    })
+
+    storage.updatePage(pageId, {
+      elements: allElements,
+      background: '#FFFAF5',
+      bgTexture: 'grain',
+      bgPattern: 'blank'
+    })
+
+    this.pushHistory()
+    this.renderCanvas()
   },
 
   addDecoration(e) {
@@ -2724,6 +2897,53 @@ Page({
       showTextPanel: false,
       showTemplatePanel: false
     })
+  },
+  insertNowComponent() {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    const dateStr = `${year}.${month}.${day}`
+    const timeStr = `${hours}:${minutes}`
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+    const weekday = weekdays[now.getDay()]
+
+    const maxZ = Math.max(0, ...this.data.elements.map(el => el.zIndex || 0))
+
+    const nowElement = {
+      id: 'el_' + Date.now(),
+      type: 'decoration',
+      subType: 'rect',
+      shapeType: 'roundRect',
+      x: 540,
+      y: 780,
+      width: 240,
+      height: 120,
+      rotation: -3,
+      scaleX: 1,
+      scaleY: 1,
+      zIndex: maxZ + 1,
+      fillColor: '#FFF8F0',
+      strokeColor: '#C4956A',
+      strokeWidth: 1.5,
+      lineStyle: 'solid',
+      borderRadius: 12,
+      text: `${dateStr} ${weekday}\n${timeStr}\n📍 地点\n今日记录`,
+      textColor: '#5A4A3A',
+      textFontSize: 18,
+      fontFamily: 'handwriting',
+      textAlign: 'center',
+      textVertical: 'middle'
+    }
+
+    const elements = [...this.data.elements, nowElement]
+    this.setData({ elements, selectedId: nowElement.id, selectedElement: nowElement })
+    this.pushHistory()
+    this.renderCanvas()
+    wx.vibrateShort({ type: 'light' })
+    wx.showToast({ title: '已插入当下标签', icon: 'none' })
   },
   closeAllPanels() {
     this.setData({

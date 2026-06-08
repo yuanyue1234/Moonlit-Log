@@ -2,8 +2,8 @@
   <view class="header">
     <view class="header-top">
       <view>
-        <view class="eyebrow">STICKER LIBRARY</view>
-        <view class="page-title">我的贴纸</view>
+        <view class="eyebrow">COLLECTION</view>
+        <view class="page-title">素材库</view>
       </view>
       <view class="header-actions">
         <view class="btn btn-small btn-secondary" bindtap="onTapSort">排序</view>
@@ -13,11 +13,24 @@
     <view class="dashed-divider"></view>
   </view>
 
-  <view class="category-title">标签分类</view>
+  <view class="search-bar">
+    <input class="search-input" placeholder="搜索标签、分组、物品..."
+           placeholder-class="search-placeholder"
+           value="{{searchKeyword}}"
+           bindinput="onSearchInput"
+           bindfocus="onFocusSearch"
+           bindblur="onBlurSearch" />
+    <view class="search-clear" wx:if="{{searchKeyword}}" bindtap="onClearSearch">×</view>
+  </view>
+
+  <view class="category-title">分组</view>
   <scroll-view scroll-x class="category-scroll" enhanced show-scrollbar="{{false}}">
     <view class="category-list">
       <view class="category-tag {{activeCategory === item.key ? 'active' : ''}}" wx:for="{{categories}}" wx:key="key" bindtap="onTapCategory" data-key="{{item.key}}">
         {{item.name}}
+      </view>
+      <view class="category-tag category-add-btn" bindtap="onAddGroup">
+        <text>+</text>
       </view>
     </view>
   </scroll-view>
@@ -28,12 +41,21 @@
         <view class="masonry-item {{selectedStickerId === item.id ? 'selected' : ''}}" wx:for="{{colLeft}}" wx:key="id"
           bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview">
           <image src="{{item.src}}" mode="widthFix" class="masonry-img effect-{{item.effect || 'none'}}" />
+          <view class="item-info">
+            <text class="item-group" wx:if="{{item.group}}">{{item.group}}</text>
+            <view class="item-tags" wx:if="{{item.tags && item.tags.length > 0}}">
+              <text class="item-tag" wx:for="{{item.tags}}" wx:key="*this" wx:for-item="tag" wx:if="{{index < 2}}">{{tag}}</text>
+            </view>
+          </view>
           <view class="quick-actions" wx:if="{{selectedStickerId === item.id}}" catchtap="stopPropagation">
             <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">
               <text>{{item.isFavorite ? '★' : '☆'}}</text>
             </view>
             <view class="quick-btn" catchtap="quickAddToBook" data-id="{{item.id}}">
               <text>+</text>
+            </view>
+            <view class="quick-btn" catchtap="quickMakeJournal" data-id="{{item.id}}">
+              <text>手帐</text>
             </view>
             <view class="quick-btn danger" catchtap="quickDelete" data-id="{{item.id}}">
               <text>×</text>
@@ -46,12 +68,21 @@
         <view class="masonry-item {{selectedStickerId === item.id ? 'selected' : ''}}" wx:for="{{colRight}}" wx:key="id"
           bindtap="onTapSticker" data-id="{{item.id}}" bindlongpress="onTapStickerPreview">
           <image src="{{item.src}}" mode="widthFix" class="masonry-img effect-{{item.effect || 'none'}}" />
+          <view class="item-info">
+            <text class="item-group" wx:if="{{item.group}}">{{item.group}}</text>
+            <view class="item-tags" wx:if="{{item.tags && item.tags.length > 0}}">
+              <text class="item-tag" wx:for="{{item.tags}}" wx:key="*this" wx:for-item="tag" wx:if="{{index < 2}}">{{tag}}</text>
+            </view>
+          </view>
           <view class="quick-actions" wx:if="{{selectedStickerId === item.id}}" catchtap="stopPropagation">
             <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">
               <text>{{item.isFavorite ? '★' : '☆'}}</text>
             </view>
             <view class="quick-btn" catchtap="quickAddToBook" data-id="{{item.id}}">
               <text>+</text>
+            </view>
+            <view class="quick-btn" catchtap="quickMakeJournal" data-id="{{item.id}}">
+              <text>手帐</text>
             </view>
             <view class="quick-btn danger" catchtap="quickDelete" data-id="{{item.id}}">
               <text>×</text>
@@ -63,9 +94,9 @@
     </view>
 
     <view class="empty-state" wx:if="{{isEmpty}}">
-      <view class="empty-text">还没有贴纸</view>
-      <view class="empty-hint">从相册添加贴纸素材。</view>
-      <view class="btn btn-primary empty-action" bindtap="onTapAdd">添加贴纸</view>
+      <view class="empty-text">还没有收藏</view>
+      <view class="empty-hint">上传小卡、票根或周边，开始收藏</view>
+      <view class="btn btn-primary empty-action" bindtap="onTapAdd">保存收藏物</view>
     </view>
     <view class="safe-spacer"></view>
   </scroll-view>
@@ -85,14 +116,15 @@
 
   <!-- 贴纸预览 - 全屏样式 -->
   <view class="preview-mask {{showPreview ? 'show' : ''}}" bindtap="closePreview">
-    <view class="preview-container" catchtap="stopPropagation" wx:if="{{previewSticker}}">
-      <image src="{{previewSticker.src}}" mode="aspectFit" class="preview-image effect-{{previewSticker.effect || 'none'}}" />
+    <view class="preview-container" catchtap="stopPropagation" wx:if="{{showPreview && previewSticker}}">
+      <image src="{{previewSticker.src}}" mode="aspectFit" class="preview-image effect-{{previewSticker.effect || 'none'}}" lazy-load="{{false}}" show-menu-by-longpress="{{false}}" />
 
       <!-- 关闭按钮 - 在信息栏上方 -->
       <view class="preview-close" bindtap="closePreview">关闭</view>
 
       <view class="preview-info">
-        <view class="preview-title">贴纸详情</view>
+        <view class="preview-title">素材详情</view>
+        <view class="preview-group" wx:if="{{previewSticker.group}}">{{previewSticker.group}}</view>
         <view class="preview-tags" wx:if="{{previewSticker.tags && previewSticker.tags.length > 0}}">
           <view class="preview-tag" wx:for="{{previewSticker.tags}}" wx:key="*this">{{item}}</view>
         </view>
@@ -107,6 +139,7 @@
         <view class="preview-actions">
           <view class="preview-btn" bindtap="previewToggleFavorite">{{previewSticker.isFavorite ? '取消收藏' : '收藏'}}</view>
           <view class="preview-btn" bindtap="previewAddTag">添加标签</view>
+          <view class="preview-btn primary" bindtap="previewMakeJournal">做成手帐</view>
           <view class="preview-btn danger" bindtap="previewDelete">删除</view>
         </view>
       </view>

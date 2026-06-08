@@ -31,11 +31,12 @@ Page({
     this.loadStickers()
   },
 
-  loadCategories() {
+  loadCategories(stickers) {
     // 从storage分组设置 + 贴纸实际group字段 合并，确保所有分组都显示
+    // 接受外部传入的stickers，避免依赖setData的异步更新
+    const list = stickers || this.data.stickers || []
     const savedGroups = storage.getGroups()
-    const stickers = this.data.stickers || storage.getStickers()
-    const stickerGroups = [...new Set(stickers.map(s => s.group).filter(g => g && g.trim()))]
+    const stickerGroups = [...new Set(list.map(s => s.group).filter(g => g && g.trim()))]
     // 合并去重
     const allGroups = [...new Set([...savedGroups, ...stickerGroups])]
     const categories = [
@@ -49,8 +50,9 @@ Page({
   loadStickers() {
     try {
       const stickers = storage.getStickers()
+      // 先同步调 loadCategories 传入最新stickers，再统一 setData 避免异步竞争
+      this.loadCategories(stickers)
       this.setData({ stickers })
-      this.loadCategories()
       this.filterStickers()
     } catch (err) {
       console.error('[stickers] loadStickers error:', err)
@@ -139,6 +141,20 @@ Page({
   onTapCategory(e) {
     this.setData({ activeCategory: e.currentTarget.dataset.key })
     this.filterStickers()
+  },
+
+  onAddGroup() {
+    wx.showModal({
+      title: '添加分组',
+      placeholderText: '输入分组名称',
+      editable: true,
+      success: (res) => {
+        if (!res.confirm || !res.content || !res.content.trim()) return
+        const name = res.content.trim()
+        storage.addGroup(name)
+        this.loadStickers()
+      }
+    })
   },
 
   onTapSticker(e) {
@@ -411,7 +427,7 @@ Page({
               src: savedPath,
               category: 'upload',
               source: 'upload',
-              tags: ['上传', '贴纸'],
+              tags: [],
               originalWidth,
               originalHeight
             })

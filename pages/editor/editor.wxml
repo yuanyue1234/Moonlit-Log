@@ -44,7 +44,7 @@
     </view>
   </view>
 
-  <view class="selection-toolbar" wx:if="{{selectedId && editorMode === 'edit'}}">
+  <view class="selection-toolbar" wx:if="{{selectedId && editorMode === 'edit'}}" style="{{toolbarTopStyle}}">
     <view class="sel-btn" bindtap="duplicateSelected" data-tooltip="复制">
       <image class="ui-icon" src="/assets/icons/copy.svg" mode="aspectFit" />
     </view>
@@ -116,7 +116,7 @@
     </scroll-view>
   </view>
 
-  <view class="floating-tool-dock" wx:if="{{editorMode === 'edit'}}">
+  <view class="floating-tool-dock" wx:if="{{editorMode === 'edit'}}" style="{{toolDockTopStyle}}">
     <view class="tool-btn {{showStickerPanel ? 'active' : ''}}" bindtap="toggleStickerPanel">
       <image class="ui-icon" src="/assets/icons/sticker.svg" mode="aspectFit" />
       <text>素材</text>
@@ -145,13 +145,17 @@
       <image class="ui-icon" src="/assets/icons/layout-template.svg" mode="aspectFit" />
       <text>模板</text>
     </view>
+    <view class="tool-btn" bindtap="insertNowComponent">
+      <text class="tool-icon-text">当下</text>
+      <text>当下</text>
+    </view>
   </view>
 
   <view class="panel {{showStickerPanel ? 'show' : ''}}" catchtap="stopPropagation">
     <view class="panel-header">
       <view>
-        <text class="panel-title">贴纸素材</text>
-        <text class="panel-subtitle">仅展示上传和提取生成的贴纸</text>
+      <text class="panel-title">素材库</text>
+      <text class="panel-subtitle">你的收藏素材</text>
       </view>
       <view class="panel-close" bindtap="toggleStickerPanel">
         <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
