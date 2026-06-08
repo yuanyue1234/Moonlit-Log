@@ -10,15 +10,34 @@ const STORAGE_KEYS = {
   PAGES: 'journal_pages',
   STICKERS: 'sticker_assets',
   THEMES: 'journal_themes',
-  SETTINGS: 'app_settings'
+  SETTINGS: 'app_settings',
+  GROUPS: 'collectible_groups'
 }
 
-const COLLECTIBLE_GROUPS = [
-  { key: '小卡票根', kind: 'card' },
-  { key: '周边包装', kind: 'packaging' },
-  { key: '活动记录', kind: 'ticket' },
-  { key: '其他收藏', kind: 'other' }
-]
+// ========== 分组管理 ==========
+
+function getGroups() {
+  return wx.getStorageSync(STORAGE_KEYS.GROUPS) || []
+}
+
+function saveGroups(groups) {
+  wx.setStorageSync(STORAGE_KEYS.GROUPS, groups)
+}
+
+function addGroup(name) {
+  if (!name || !name.trim()) return null
+  const groups = getGroups()
+  const trimmed = name.trim()
+  if (groups.includes(trimmed)) return trimmed
+  const updated = [...groups, trimmed]
+  saveGroups(updated)
+  return trimmed
+}
+
+function deleteGroup(name) {
+  const groups = getGroups()
+  saveGroups(groups.filter(g => g !== name))
+}
 
 // ========== 手账本管理 ==========
 
@@ -619,6 +638,7 @@ module.exports = {
   getPages, savePages, getPageById, createPage, ensureCoverPage, refreshCoverPage, updatePage, deletePage, normalizePageElements,
   getBookPageCounts,
   getStickers, saveSticker, updateSticker, deleteSticker, toggleFavorite,
+  getGroups, saveGroups, addGroup, deleteGroup,
   clearAll
 }
 

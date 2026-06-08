@@ -6,11 +6,12 @@ Page({
   data: {
     categories: [
       { key: 'all', name: '全部' },
-      { key: 'upload', name: '我的上传' },
       { key: 'favorite', name: '收藏' }
     ],
     activeCategory: 'all',
     sortBy: 'newest', // newest, oldest, name
+    searchKeyword: '',
+    isSearching: false,
     stickers: [],
     filteredStickers: [],
     colLeft: [],
@@ -30,10 +31,26 @@ Page({
     this.loadStickers()
   },
 
+  loadCategories() {
+    // 从storage分组设置 + 贴纸实际group字段 合并，确保所有分组都显示
+    const savedGroups = storage.getGroups()
+    const stickers = this.data.stickers || storage.getStickers()
+    const stickerGroups = [...new Set(stickers.map(s => s.group).filter(g => g && g.trim()))]
+    // 合并去重
+    const allGroups = [...new Set([...savedGroups, ...stickerGroups])]
+    const categories = [
+      { key: 'all', name: '全部' },
+      ...allGroups.map(g => ({ key: g, name: g })),
+      { key: 'favorite', name: '收藏' }
+    ]
+    this.setData({ categories })
+  },
+
   loadStickers() {
     try {
       const stickers = storage.getStickers()
       this.setData({ stickers })
+      this.loadCategories()
       this.filterStickers()
     } catch (err) {
       console.error('[stickers] loadStickers error:', err)
@@ -43,15 +60,31 @@ Page({
   },
 
   filterStickers() {
-    const { stickers, activeCategory, sortBy } = this.data
+    const { stickers, activeCategory, sortBy, searchKeyword } = this.data
     let filtered = stickers
-    if (activeCategory === 'favorite') {
+
+    // 搜索优先
+    if (searchKeyword && searchKeyword.trim()) {
+      const kw = searchKeyword.trim().toLowerCase()
+      filtered = stickers.filter(s => {
+        if (s.tags && s.tags.some(t => t.toLowerCase().indexOf(kw) >= 0)) return true
+        if (s.group && s.group.toLowerCase().indexOf(kw) >= 0) return true
+        if (s.labels) {
+          if (s.labels.mainObject && s.labels.mainObject.toLowerCase().indexOf(kw) >= 0) return true
+          if (s.labels.materialType && s.labels.materialType.toLowerCase().indexOf(kw) >= 0) return true
+          if (s.labels.tags && s.labels.tags.some(t => t.toLowerCase().indexOf(kw) >= 0)) return true
+          if (s.labels.scene && s.labels.scene.toLowerCase().indexOf(kw) >= 0) return true
+        }
+        if (s.activityName && s.activityName.toLowerCase().indexOf(kw) >= 0) return true
+        return false
+      })
+    } else if (activeCategory === 'favorite') {
       filtered = stickers.filter(s => s.isFavorite)
     } else if (activeCategory !== 'all') {
-      filtered = stickers.filter(s => s.category === activeCategory)
+      filtered = stickers.filter(s => s.group === activeCategory)
     }
 
-    // 排序
+    // 排序保持不变
     filtered = [...filtered].sort((a, b) => {
       if (sortBy === 'newest') return (b.createdAt || 0) - (a.createdAt || 0)
       if (sortBy === 'oldest') return (a.createdAt || 0) - (b.createdAt || 0)
@@ -69,6 +102,24 @@ Page({
       colRight,
       isEmpty: filtered.length === 0
     })
+  },
+
+  // 搜索方法
+  onSearchInput(e) {
+    this.setData({ searchKeyword: e.detail.value })
+    this.filterStickers()
+  },
+  onClearSearch() {
+    this.setData({ searchKeyword: '', isSearching: false })
+    this.filterStickers()
+  },
+  onFocusSearch() {
+    this.setData({ isSearching: true })
+  },
+  onBlurSearch() {
+    if (!this.data.searchKeyword) {
+      this.setData({ isSearching: false })
+    }
   },
 
   onTapSort() {
@@ -139,12 +190,36 @@ Page({
     const stickerId = this.data.selectedStickerId
     this.setData({ showBookPicker: false })
     if (stickerId && bookId) {
-      this._addStickerToBook(stickerId, bookId)
+      this._makeJournal(stickerId, bookId)
     }
   },
 
   closeBookPicker() {
     this.setData({ showBookPicker: false })
+  },
+
+  quickMakeJournal(e) {
+    const id = e.currentTarget.dataset.id
+    const sticker = this.data.stickers.find(s => s.id === id)
+    if (!sticker) return
+
+    const books = storage.getBooks()
+    if (books.length === 0) {
+      wx.showToast({ title: '还没有手帐本', icon: 'none' })
+      return
+    }
+    if (books.length === 1) {
+      this._makeJournal(id, books[0].id)
+      return
+    }
+    this.setData({ showBookPicker: true, books, selectedStickerId: id })
+  },
+
+  _makeJournal(stickerId, bookId) {
+    wx.navigateTo({
+      url: `/pages/editor/editor?bookId=${bookId}&stickerId=${encodeURIComponent(stickerId)}&fromCollect=1`
+    })
+    this.setData({ selectedStickerId: null })
   },
 
   _addStickerToBook(stickerId, bookId) {
@@ -213,6 +288,22 @@ Page({
     if (!previewSticker) return
     storage.toggleFavorite(previewSticker.id)
     this.refreshPreview(previewSticker.id)
+  },
+
+  previewMakeJournal() {
+    const { previewSticker } = this.data
+    if (!previewSticker) return
+    const books = storage.getBooks()
+    if (books.length === 0) {
+      wx.showToast({ title: '还没有手帐本', icon: 'none' })
+      return
+    }
+    if (books.length === 1) {
+      this.closePreview()
+      this._makeJournal(previewSticker.id, books[0].id)
+      return
+    }
+    this.setData({ showBookPicker: true, books, selectedStickerId: previewSticker.id })
   },
 
   onTapEdit() {

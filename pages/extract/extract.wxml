@@ -1,9 +1,9 @@
 <view class="page">
   <view class="idle-view" wx:if="{{step === 'idle'}}">
     <view class="section-header">
-      <view class="eyebrow">AI EXTRACTION</view>
-      <view class="page-title">素材提取</view>
-      <view class="subtitle">上传图片后自动压缩到 2MB 内，并调用 remove.bg 官方 API 去除背景。</view>
+      <view class="eyebrow">COLLECT ITEM</view>
+      <view class="page-title">保存收藏物</view>
+      <view class="subtitle">拍摄或上传小卡、票根、周边，自动去背景并保存</view>
     </view>
     <view class="dashed-divider"></view>
 
@@ -14,11 +14,11 @@
 
     <view class="upload-area" bindtap="chooseFromAlbum">
       <image class="extract-icon-img" src="/assets/icons/upload.svg" mode="aspectFit" />
-      <view class="upload-text">上传图片</view>
-      <view class="upload-hint">建议选择主体清晰、边缘完整的图片</view>
+      <view class="upload-text">上传收藏物</view>
+      <view class="upload-hint">建议：避开反光，对齐边缘，留白拍摄</view>
     </view>
 
-    <view class="btn btn-secondary camera-btn" bindtap="takePhoto">拍照提取</view>
+    <view class="btn btn-secondary camera-btn" bindtap="takePhoto">拍摄收藏物</view>
 
     <view class="recent-section" wx:if="{{recentExtracts.length > 0}}">
       <view class="eyebrow">RECENT</view>
@@ -46,8 +46,8 @@
 
   <view class="done-view" wx:if="{{step === 'done'}}">
     <view class="section-header compact">
-      <view class="eyebrow">EXTRACTION COMPLETE</view>
-      <view class="page-title">已生成贴纸</view>
+      <view class="eyebrow">COLLECTION READY</view>
+      <view class="page-title">已识别收藏物</view>
     </view>
 
     <view class="result-image-wrapper effect-{{postProcessEffect}}" bindtap="previewImage">
@@ -68,13 +68,27 @@
       <view class="tag" wx:for="{{autoTags}}" wx:key="*this">{{item}}</view>
     </view>
 
+    <view class="group-picker">
+      <view class="group-label">分组</view>
+      <view class="group-options">
+        <view class="group-chip {{selectedGroup === item ? 'active' : ''}}" 
+              wx:for="{{collectGroups}}" wx:key="*this" 
+              bindtap="onSelectGroup" data-key="{{item}}">
+          {{item}}
+        </view>
+        <view class="group-chip group-add-btn" bindtap="onAddGroup">
+          <text class="group-add-icon">+</text>
+        </view>
+      </view>
+    </view>
+
     <view class="debug-info" wx:if="{{debugInfo}}">
       <text class="debug-text">remove.bg: {{debugInfo.removeBgMs}}ms · 输入: {{debugInfo.inputSizeKB}}KB</text>
     </view>
 
     <view class="action-area">
-      <view class="btn btn-primary" bindtap="saveToLibrary">保存到贴纸库</view>
-      <view class="btn btn-secondary action-gap" bindtap="putInJournal">放入手帐</view>
+      <view class="btn btn-primary" bindtap="saveToLibrary">保存到素材库</view>
+      <view class="btn btn-secondary action-gap" bindtap="makeIntoJournal">做成手帐</view>
       <view class="btn btn-ghost action-gap" bindtap="reset">重新提取</view>
     </view>
   </view>

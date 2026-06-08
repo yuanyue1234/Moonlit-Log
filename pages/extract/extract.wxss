@@ -223,3 +223,30 @@
 .postprocess-chip.active .postprocess-icon {
   filter: invert(77%) sepia(88%) saturate(1391%) hue-rotate(98deg) brightness(96%) contrast(102%);
 }
+
+.group-picker {
+  margin: 24rpx 0;
+}
+.group-label {
+  font-size: 24rpx;
+  color: #8b949e;
+  margin-bottom: 12rpx;
+}
+.group-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.group-chip {
+  padding: 12rpx 28rpx;
+  border-radius: 32rpx;
+  font-size: 24rpx;
+  background: #2a2a2a;
+  color: #8b949e;
+  border: 2rpx solid #3a3a3a;
+}
+.group-chip.active {
+  background: rgba(0, 217, 146, 0.15);
+  color: #00d992;
+  border-color: #00d992;
+}

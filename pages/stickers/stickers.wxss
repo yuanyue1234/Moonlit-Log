@@ -4,6 +4,39 @@
 .header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24rpx; }
 .header-actions { display: flex; gap: 12rpx; }
 
+/* 搜索框 */
+.search-bar {
+  position: relative;
+  margin: 16rpx 32rpx 8rpx;
+}
+.search-input {
+  width: 100%;
+  height: 72rpx;
+  background: #2a2a2a;
+  border-radius: 36rpx;
+  padding: 0 60rpx 0 32rpx;
+  font-size: 26rpx;
+  color: #e6edf3;
+  border: 2rpx solid #3a3a3a;
+  box-sizing: border-box;
+}
+.search-placeholder {
+  color: #6e7681;
+}
+.search-clear {
+  position: absolute;
+  right: 20rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b949e;
+  font-size: 32rpx;
+}
+
 .category-title {
   padding: 24rpx 32rpx 0;
   font-size: 22rpx;
@@ -61,16 +94,18 @@
   z-index: 5;
 }
 .quick-btn {
-  width: 48rpx;
+  min-width: 48rpx;
   height: 48rpx;
-  border-radius: 50%;
+  padding: 0 8rpx;
+  border-radius: 9999rpx;
   background: rgba(16, 16, 16, 0.85);
   border: 1rpx solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #f2f2f2;
+  box-sizing: border-box;
 }
 .quick-btn:active {
   background: rgba(0, 217, 146, 0.8);
@@ -88,6 +123,33 @@
   display: block;
   background: transparent;
   border-radius: 12rpx;
+}
+
+/* 卡片信息 */
+.item-info {
+  padding: 8rpx 12rpx 12rpx;
+}
+.item-group {
+  display: inline-block;
+  font-size: 20rpx;
+  color: #00d992;
+  background: rgba(0, 217, 146, 0.1);
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  margin-bottom: 6rpx;
+}
+.item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6rpx;
+  margin-top: 4rpx;
+}
+.item-tag {
+  font-size: 18rpx;
+  color: #8b949e;
+  background: #2a2a2a;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
 }
 
 .masonry-overlay {
@@ -228,6 +290,21 @@
   font-size: 24rpx;
 }
 .preview-btn.danger { color: #ff4d4f; }
+.preview-btn.primary {
+  background: var(--color-primary);
+  color: #101010;
+  border-color: var(--color-primary);
+}
+/* 预览弹窗分组 */
+.preview-group {
+  display: inline-block;
+  font-size: 24rpx;
+  color: #00d992;
+  background: rgba(0, 217, 146, 0.12);
+  padding: 6rpx 20rpx;
+  border-radius: 12rpx;
+  margin-bottom: 12rpx;
+}
 .preview-close {
   margin-top: 24rpx;
   text-align: center;

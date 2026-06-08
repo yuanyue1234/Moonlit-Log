@@ -38,13 +38,21 @@ Page({
     recentExtracts: [],
     extractResultId: '',
     savedStickerId: '',
-    isSaving: false
+    isSaving: false,
+    selectedGroup: '',
+    collectGroups: [],
   },
 
   onShow() {
     this.loadRecent()
+    this.loadGroups()
     const usage = aiUtil.checkUsageLimit()
     this.setData({ monthlyRemaining: usage.remaining })
+  },
+
+  loadGroups() {
+    const groups = storage.getGroups()
+    this.setData({ collectGroups: groups })
   },
 
   loadRecent() {
@@ -169,7 +177,8 @@ Page({
       style: 'none',
       effect: postProcessEffect,
       labels,
-      extractResultId
+      extractResultId,
+      group: this.data.selectedGroup
     })
     this.setData({ savedStickerId: sticker.id })
     return sticker.id
@@ -182,7 +191,7 @@ Page({
     this.setData({ isSaving: false })
 
     if (stickerId) {
-      wx.showToast({ title: '已保存到贴纸库', icon: 'none' })
+      wx.showToast({ title: '已保存到素材库', icon: 'none' })
       this.loadRecent()
     }
   },
@@ -199,6 +208,44 @@ Page({
 
     wx.navigateTo({
       url: `/pages/editor/editor?bookId=${books[0].id}&stickerId=${encodeURIComponent(stickerId)}`
+    })
+  },
+
+  makeIntoJournal() {
+    const stickerId = this.ensureSavedSticker()
+    if (!stickerId) return
+
+    const books = storage.getBooks()
+    if (books.length === 0) {
+      wx.showToast({ title: '请先新建手帐本', icon: 'none' })
+      return
+    }
+
+    wx.navigateTo({
+      url: `/pages/editor/editor?bookId=${books[0].id}&stickerId=${encodeURIComponent(stickerId)}&fromCollect=1`
+    })
+  },
+
+  onSelectGroup(e) {
+    const key = e.currentTarget.dataset.key
+    // 点击已选中的分组则取消选中
+    this.setData({ selectedGroup: this.data.selectedGroup === key ? '' : key })
+  },
+
+  onAddGroup() {
+    wx.showModal({
+      title: '添加分组',
+      placeholderText: '输入分组名称',
+      editable: true,
+      success: (res) => {
+        if (!res.confirm || !res.content || !res.content.trim()) return
+        const name = res.content.trim()
+        const added = storage.addGroup(name)
+        if (added) {
+          this.loadGroups()
+          this.setData({ selectedGroup: added })
+        }
+      }
     })
   },
 
