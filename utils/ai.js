@@ -2,9 +2,15 @@
 
 const CONFIG = {
   // MiMo 标签配置（MaxPlan / MiMo v2）
-  MIMO_API_KEY: 'tp-ctf32lvhik73nbcwdgcyn83hfntz437uihs6jubwudfe59fu',
+  // 注意：API Key 不应提交到公开仓库，请从本地配置或环境变量获取
+  MIMO_API_KEY: '', // 请替换为真实 Key，或通过 setMimoApiKey() 设置
   MIMO_URL: 'https://api.mimo-v2.com/v1/chat/completions',
   MIMO_MODEL: 'mimo-v2-omni'
+}
+
+// 运行时设置 API Key（避免硬编码）
+function setMimoApiKey(key) {
+  CONFIG.MIMO_API_KEY = key
 }
 
 // 保留兼容占位（移除 remove.bg 后不再追踪使用次数）

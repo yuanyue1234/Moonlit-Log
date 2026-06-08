@@ -12,3 +12,13 @@ $RECYCLE.BIN/
 
 # Node.js
 node_modules/
+
+# 敏感/私有文件
+.workbuddy/
+project.private.config.json
+utils/ai-config.js
+
+# 临时文件
+*.zip
+*.log
+sourcemap/
