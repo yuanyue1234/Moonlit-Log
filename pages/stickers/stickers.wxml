@@ -54,8 +54,8 @@
             <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">
               <text>{{item.isFavorite ? '★' : '☆'}}</text>
             </view>
-            <view class="quick-btn" catchtap="quickAddToBook" data-id="{{item.id}}">
-              <text>+</text>
+            <view class="quick-btn" catchtap="quickMoveGroup" data-id="{{item.id}}">
+              <text>移组</text>
             </view>
             <view class="quick-btn" catchtap="quickMakeJournal" data-id="{{item.id}}">
               <text>手帐</text>
@@ -82,8 +82,8 @@
             <view class="quick-btn" catchtap="quickToggleFavorite" data-id="{{item.id}}">
               <text>{{item.isFavorite ? '★' : '☆'}}</text>
             </view>
-            <view class="quick-btn" catchtap="quickAddToBook" data-id="{{item.id}}">
-              <text>+</text>
+            <view class="quick-btn" catchtap="quickMoveGroup" data-id="{{item.id}}">
+              <text>移组</text>
             </view>
             <view class="quick-btn" catchtap="quickMakeJournal" data-id="{{item.id}}">
               <text>手帐</text>

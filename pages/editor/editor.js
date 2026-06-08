@@ -14,11 +14,13 @@ let pxRatio = 1
 let canvasPxW = 0       // canvas 物理像素宽
 let canvasPxH = 0       // canvas 物理像素高
 let canvasRect = null   // canvas 在屏幕上的 rect (px)
+let _toolbarDragOffset = { x: 0, y: 0 } // 工具栏拖动偏移（退出页面时恢复默认）
 let renderScheduled = false
 
 // ========== 图片缓存 ==========
 // 解决 Bug: 图片异步加载导致绘制失败
 const imageCache = new Map() // src -> { img, loaded, width, height }
+const failedImages = new Set() // 记录永久加载失败的图片，避免重复尝试
 
 // ========== 纹理缓存 ==========
 const textureCache = new Map() // key -> OffscreenCanvas
@@ -37,6 +39,11 @@ function getTextureCanvas(key, w, h, drawFn) {
 
 function loadImage(src, canvas) {
   return new Promise((resolve, reject) => {
+    // 已经尝试过且失败，不再重试
+    if (failedImages.has(src)) {
+      reject(new Error('Image previously failed: ' + src))
+      return
+    }
     if (imageCache.has(src) && imageCache.get(src).loaded) {
       resolve(imageCache.get(src))
       return
@@ -52,6 +59,7 @@ function loadImage(src, canvas) {
     }
     img.onerror = () => {
       entry.loaded = false
+      failedImages.add(src) // 标记为永久失败，不再重试
       reject(new Error('Image load failed: ' + src))
     }
     img.src = src
@@ -103,6 +111,15 @@ Page({
     showTextPanel: false,
     showTemplatePanel: false,
         stickers: [],
+    panelSearchKeyword: '',
+    panelCategories: [],
+    panelActiveCategory: 'all',
+    nowWidgets: [
+      { type: 'time', icon: '🕐', label: '时间' },
+      { type: 'date', icon: '📅', label: '日期' },
+      { type: 'location', icon: '📍', label: '地点' },
+      { type: 'solarTerm', icon: '🌿', label: '节气' }
+    ],
     templates: [],
     templateCategories: [],
     activeTemplateCategory: '全部',
@@ -144,7 +161,7 @@ Page({
     // 输入法高度适配
     keyboardHeight: 0,
     // 浮层定位（onReady动态计算，适配PC端和手机端）
-    toolbarTopStyle: 'top: 202rpx;',
+    toolbarStyle: '',
     toolDockTopStyle: 'top: 112rpx;',
     // 调色盘
     showColorPicker: false,
@@ -163,6 +180,9 @@ Page({
     rectStrokeColors: ['#333333', '#666666', '#999999', '#FF0000', '#00d992', '#4A90D9', '#FF69B4', '#FFD93D'],
     // 边框面板
     showBorderPanel: false,
+    // 填充图片位置调整面板
+    showFillImagePanel: false,
+    fillImageDragReady: false,
     borderColor: '#333333',
     borderWidth: 2,
     borderStyle: 'solid',
@@ -255,6 +275,7 @@ Page({
     if (fromCollect === '1' && stickerId) {
       this._applyCollectTemplate()
     }
+
   },
 
   onReady() {
@@ -275,11 +296,13 @@ Page({
       const screenW = wx.getWindowInfo ? wx.getWindowInfo().windowWidth : (wx.getSystemInfoSync().windowWidth)
       const rpxRatio = 750 / screenW
       const topBarBottomRpx = Math.ceil(topBarBottomPx * rpxRatio)
+      this._topBarBottomRpx = topBarBottomRpx
       this.setData({
-        toolbarTopStyle: `top: ${topBarBottomRpx + 12}rpx;`,
         toolDockTopStyle: `top: ${topBarBottomRpx + 8}rpx;`
       })
     }).exec()
+    // 拖动偏移复位（仅页面加载时）
+    _toolbarDragOffset = { x: 0, y: 0 }
   },
 
   onShow() {
@@ -303,6 +326,7 @@ Page({
     if (pageId) storage.updatePage(pageId, { elements, background, bgPattern, bgTexture })
     // 清理图片缓存
     imageCache.clear()
+    failedImages.clear()
     textureCache.clear()
   },
 
@@ -622,7 +646,7 @@ Page({
     } else if (el.type === 'text') {
       this._drawText(ctx, el, w, h)
     } else if (el.type === 'decoration') {
-      this._drawDecoration(ctx, el, w, h, scaleX, scaleY)
+      result = this._drawDecoration(ctx, el, w, h, scaleX, scaleY)
     }
 
     // 绘制边框
@@ -696,6 +720,12 @@ Page({
       return 'ok'
     }
 
+    // 图片已确认加载失败，显示损坏占位符（不再重试）
+    if (failedImages.has(src)) {
+      this._drawPlaceholder(ctx, w, h, 'BROKEN')
+      return 'ok'
+    }
+
     // 检查缓存
     const cached = imageCache.get(src)
     if (cached && cached.loaded) {
@@ -745,9 +775,15 @@ Page({
     const promises = []
 
     elements.forEach(el => {
-      if (el.type === 'image' && el.src && !imageCache.has(el.src)) {
+      if (el.type === 'image' && el.src && !imageCache.has(el.src) && !failedImages.has(el.src)) {
         promises.push(
           loadImage(el.src, canvasNode).catch(() => {})
+        )
+      }
+      // 矩形填充图片
+      if (el.type === 'decoration' && el.subType === 'rect' && el.fillImage && !imageCache.has(el.fillImage) && !failedImages.has(el.fillImage)) {
+        promises.push(
+          loadImage(el.fillImage, canvasNode).catch(() => {})
         )
       }
     })
@@ -820,21 +856,123 @@ Page({
     ctx.restore()
   },
 
+  // 在矩形内绘制填充图片
+  _drawRectFillImage(ctx, el, w, h) {
+    const src = el.fillImage
+    if (!src) return 'ok'
+
+    const cached = imageCache.get(src)
+    if (!cached || !cached.loaded) return 'pending'
+
+    ctx.save()
+
+    const shapeType = el.shapeType || 'rect'
+    const borderRadius = (el.borderRadius || 0) * (canvasPxW / canvasWidth)
+    ctx.beginPath()
+
+    if (shapeType === 'circle') {
+      const r = Math.min(w, h) / 2
+      ctx.arc(0, 0, r, 0, Math.PI * 2)
+    } else if (shapeType === 'ellipse') {
+      ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2)
+    } else if (shapeType === 'roundRect') {
+      this._roundRect(ctx, -w / 2, -h / 2, w, h, borderRadius)
+    } else if (shapeType === 'heart') {
+      const s = Math.min(w, h) * 0.48
+      ctx.moveTo(0, -s * 0.3)
+      ctx.bezierCurveTo(-s * 0.45, -s * 0.6, -s * 0.55, -s * 0.1, 0, s * 0.5)
+      ctx.bezierCurveTo(s * 0.55, -s * 0.1, s * 0.45, -s * 0.6, 0, -s * 0.3)
+    } else if (shapeType === 'star') {
+      const s = Math.min(w, h) * 0.45
+      const innerR = s * 0.38, outerR = s
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? outerR : innerR
+        const angle = (i * Math.PI) / 5 - Math.PI / 2
+        const x = Math.cos(angle) * r, y = Math.sin(angle) * r
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+    } else {
+      ctx.rect(-w / 2, -h / 2, w, h)
+    }
+
+    ctx.clip()
+
+    // 图片缩放填满矩形（cover 模式），支持手动偏移
+    const iw = cached.width, ih = cached.height
+    const scale = Math.max(w / iw, h / ih)
+    const sw = iw * scale, sh = ih * scale
+    const offsetX = el.fillImageOffsetX || 0
+    const offsetY = el.fillImageOffsetY || 0
+    const maxDx = Math.max(0, (sw - w) / 2)
+    const maxDy = Math.max(0, (sh - h) / 2)
+    const dx = -(sw - w) / 2 - w / 2 + offsetX * maxDx / 100
+    const dy = -(sh - h) / 2 - h / 2 + offsetY * maxDy / 100
+    ctx.drawImage(cached.img, dx, dy, sw, sh)
+
+    ctx.restore()
+    return 'ok'
+  },
+
+  // 绘制心形
+  _drawHeart(ctx, w, h, fillColor, shouldStroke) {
+    const s = Math.min(w, h) * 0.48
+    ctx.beginPath()
+    // 起点：顶部凹口
+    ctx.moveTo(0, -s * 0.3)
+    // 左半：顶部 → 左侧弧 → 底部尖
+    ctx.bezierCurveTo(-s * 0.45, -s * 0.6, -s * 0.55, -s * 0.1, 0, s * 0.5)
+    // 右半：底部尖 → 右侧弧 → 回到顶部
+    ctx.bezierCurveTo(s * 0.55, -s * 0.1, s * 0.45, -s * 0.6, 0, -s * 0.3)
+    if (fillColor !== 'transparent') {
+      ctx.fillStyle = fillColor
+      ctx.fill()
+    }
+    if (shouldStroke) ctx.stroke()
+  },
+
+  // 绘制五角星
+  _drawStar(ctx, w, h, fillColor, shouldStroke) {
+    const s = Math.min(w, h) * 0.45
+    const innerR = s * 0.38
+    const outerR = s
+    const points = 5
+    ctx.beginPath()
+    for (let i = 0; i < points * 2; i++) {
+      const r = i % 2 === 0 ? outerR : innerR
+      const angle = (i * Math.PI) / points - Math.PI / 2
+      const x = Math.cos(angle) * r
+      const y = Math.sin(angle) * r
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+    if (fillColor !== 'transparent') {
+      ctx.fillStyle = fillColor
+      ctx.fill()
+    }
+    if (shouldStroke) ctx.stroke()
+  },
+
   // 绘制装饰元素 - 新增胶带、便签、边框等
   _drawDecoration(ctx, el, w, h, scaleX, scaleY) {
     const subType = el.subType
+    let result = 'ok'
 
     if (subType === 'title') {
-      const fontSize = (el.fontSize || 40) * (canvasPxW / canvasWidth)
-      ctx.font = `bold ${fontSize}px -apple-system, 'PingFang SC', sans-serif`
+      const scaleRatio = canvasPxW / canvasWidth
+      const fontSize = (el.fontSize || 40) * scaleRatio
+      const fontFamily = this._getFontFamily(el.fontFamily || 'sans')
+      ctx.font = `bold ${fontSize}px ${fontFamily}`
       ctx.fillStyle = el.color || '#f2f2f2'
-      ctx.textAlign = 'center'
+      ctx.textAlign = el.textAlign || 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(el.text || '', 0, 0)
+      const textX = el.textAlign === 'left' ? -w/2 + 10 * scaleRatio : el.textAlign === 'right' ? w/2 - 10 * scaleRatio : 0
+      ctx.fillText(el.text || '', textX, 0)
     }
     else if (subType === 'line') {
+      const scaleRatio = canvasPxW / canvasWidth
       ctx.strokeStyle = el.color || '#3d3a39'
-      ctx.lineWidth = 2
+      ctx.lineWidth = (el.strokeWidth || 2) * scaleRatio
       ctx.beginPath()
       ctx.moveTo(-w/2, 0)
       ctx.lineTo(w/2, 0)
@@ -927,7 +1065,8 @@ Page({
         const r = Math.min(w, h) / 2
         ctx.beginPath()
         ctx.arc(0, 0, r, 0, Math.PI * 2)
-        if (fillColor !== 'transparent') {
+        if (el.fillImage) result = this._drawRectFillImage(ctx, el, w, h)
+        else if (fillColor !== 'transparent') {
           ctx.fillStyle = fillColor
           ctx.fill()
         }
@@ -935,21 +1074,32 @@ Page({
       } else if (shapeType === 'ellipse') {
         ctx.beginPath()
         ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2)
-        if (fillColor !== 'transparent') {
+        if (el.fillImage) result = this._drawRectFillImage(ctx, el, w, h)
+        else if (fillColor !== 'transparent') {
           ctx.fillStyle = fillColor
           ctx.fill()
         }
         if (shouldStroke) ctx.stroke()
       } else if (shapeType === 'roundRect') {
         this._roundRect(ctx, -w/2, -h/2, w, h, borderRadius)
-        if (fillColor !== 'transparent') {
+        if (el.fillImage) result = this._drawRectFillImage(ctx, el, w, h)
+        else if (fillColor !== 'transparent') {
           ctx.fillStyle = fillColor
           ctx.fill()
         }
         if (shouldStroke) ctx.stroke()
+      } else if (shapeType === 'heart') {
+        if (el.fillImage) result = this._drawRectFillImage(ctx, el, w, h)
+        else this._drawHeart(ctx, w, h, fillColor, shouldStroke)
+        if (el.fillImage && shouldStroke) ctx.stroke()
+      } else if (shapeType === 'star') {
+        if (el.fillImage) result = this._drawRectFillImage(ctx, el, w, h)
+        else this._drawStar(ctx, w, h, fillColor, shouldStroke)
+        if (el.fillImage && shouldStroke) ctx.stroke()
       } else {
         // 普通矩形
-        if (fillColor !== 'transparent') {
+        if (el.fillImage) result = this._drawRectFillImage(ctx, el, w, h)
+        else if (fillColor !== 'transparent') {
           ctx.fillStyle = fillColor
           ctx.fillRect(-w/2, -h/2, w, h)
         }
@@ -990,6 +1140,7 @@ Page({
     else if (subType === 'borderStars' || subType === 'borderHearts') {
       this._drawPatternBorder(ctx, el, w, h, subType === 'borderStars' ? '*' : '+')
     }
+    return result
   },
 
   // ---- 新增装饰绘制方法 ----
@@ -1419,6 +1570,7 @@ Page({
       const hitEl = this._hitTest(pos.x, pos.y)
       if (hitEl) {
         this.setData({ selectedId: hitEl.id, selectedElement: hitEl })
+        this._updateToolbarFixedStyle()
         if (hitEl.locked) {
           touchState.type = null
           this.renderCanvas()
@@ -1432,6 +1584,7 @@ Page({
         touchState.elementStartR = hitEl.rotation || 0
       } else {
         this.setData({ selectedId: null, selectedElement: null })
+        this._updateToolbarFixedStyle()
         touchState.type = null
       }
       this.renderCanvas()
@@ -1761,6 +1914,7 @@ Page({
     }
     const elements = [...this.data.elements, newEl]
     this.setData({ elements, selectedId: newEl.id, selectedElement: newEl })
+    this._updateToolbarFixedStyle()
     this.pushHistory()
     this.renderCanvas()
     wx.showToast({ title: '已添加', icon: 'none', duration: 800 })
@@ -1800,6 +1954,7 @@ Page({
     }
     const elements = [...this.data.elements, newEl]
     this.setData({ elements, selectedId: newEl.id, selectedElement: newEl })
+    this._updateToolbarFixedStyle()
     this.pushHistory()
     this.renderCanvas()
     return true
@@ -1819,6 +1974,114 @@ Page({
     if (this._addStickerAssetToCanvas(sticker, this.data._fromCollect)) {
       wx.showToast({ title: '已放入手帐', icon: 'none', duration: 900 })
     }
+  },
+
+  // 素材面板「当下」组件 - 直接添加文字到画布
+  onTapNowWidget(e) {
+    const type = e.currentTarget.dataset.type
+    if (!type) return
+
+    // 地点需要先让用户选择
+    if (type === 'location') {
+      this._addLocationWidget()
+      return
+    }
+
+    const text = this._getNowWidgetText(type)
+    if (!text) return
+    this._addNowTextWidget(text)
+  },
+
+  _addNowTextWidget(text) {
+    const maxZ = this._getMaxZIndex()
+    const newEl = {
+      id: 'el_widget_' + Date.now(),
+      type: 'text',
+      text: text,
+      x: 200, y: 300,
+      width: 300,
+      fontSize: 40,
+      color: '#333333',
+      fontFamily: 'handwriting',
+      rotation: 0,
+      scaleX: 1, scaleY: 1,
+      zIndex: maxZ + 1
+    }
+    const elements = [...this.data.elements, newEl]
+    this.setData({ elements, selectedId: newEl.id, selectedElement: newEl })
+    this.pushHistory()
+    this.renderCanvas()
+    wx.vibrateShort({ type: 'light' })
+  },
+
+  _addLocationWidget() {
+    wx.chooseLocation({
+      success: (res) => {
+        if (res.name) {
+          const text = res.address
+            ? `📍 ${res.name} · ${res.address}`
+            : `📍 ${res.name}`
+          this._addNowTextWidget(text)
+        } else {
+          wx.showToast({ title: '未获取到位置名称', icon: 'none' })
+        }
+      },
+      fail: (err) => {
+        if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) {
+          // 用户取消，不打扰
+          return
+        }
+        // 用户拒绝授权或定位未开启
+        wx.showModal({
+          title: '需要位置权限',
+          content: '请在「设置 → 隐私 → 位置信息」中允许小程序使用位置',
+          confirmText: '知道了',
+          showCancel: false
+        })
+      }
+    })
+  },
+
+  _getNowWidgetText(type) {
+    const now = new Date()
+    const weekDays = ['日', '一', '二', '三', '四', '五', '六']
+    switch (type) {
+      case 'time':
+        return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      case 'date':
+        return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 星期${weekDays[now.getDay()]}`
+      case 'location':
+        return '地点：'
+      case 'solarTerm':
+        return this._getNowSolarTerm(now.getMonth() + 1, now.getDate())
+      default:
+        return ''
+    }
+  },
+
+  _getNowSolarTerm(month, day) {
+    const terms = [
+      { name: '小寒', m: 1, d: 5 }, { name: '大寒', m: 1, d: 20 },
+      { name: '立春', m: 2, d: 4 }, { name: '雨水', m: 2, d: 18 },
+      { name: '惊蛰', m: 3, d: 5 }, { name: '春分', m: 3, d: 20 },
+      { name: '清明', m: 4, d: 4 }, { name: '谷雨', m: 4, d: 19 },
+      { name: '立夏', m: 5, d: 5 }, { name: '小满', m: 5, d: 20 },
+      { name: '芒种', m: 6, d: 5 }, { name: '夏至', m: 6, d: 21 },
+      { name: '小暑', m: 7, d: 7 }, { name: '大暑', m: 7, d: 22 },
+      { name: '立秋', m: 8, d: 7 }, { name: '处暑', m: 8, d: 22 },
+      { name: '白露', m: 9, d: 7 }, { name: '秋分', m: 9, d: 22 },
+      { name: '寒露', m: 10, d: 8 }, { name: '霜降', m: 10, d: 23 },
+      { name: '立冬', m: 11, d: 7 }, { name: '小雪', m: 11, d: 22 },
+      { name: '大雪', m: 12, d: 7 }, { name: '冬至', m: 12, d: 21 }
+    ]
+    const dateNum = month * 100 + day
+    let current = '大寒'
+    for (let i = terms.length - 1; i >= 0; i--) {
+      if (terms[i].m * 100 + terms[i].d <= dateNum) {
+        current = terms[i].name; break
+      }
+    }
+    return current
   },
 
   _applyCollectTemplate() {
@@ -2071,6 +2334,7 @@ Page({
         editingTextId: '',
         textPanelMode: 'add'
       })
+      this._updateToolbarFixedStyle()
       this.pushHistory()
       this.renderCanvas()
       return
@@ -2109,6 +2373,7 @@ Page({
     }
     const newElements = elements.filter(el => el.id !== selectedId)
     this.setData({ elements: newElements, selectedId: null, selectedElement: null })
+    this._updateToolbarFixedStyle()
     this.pushHistory()
     this.renderCanvas()
     wx.vibrateShort({ type: 'medium' })
@@ -2161,6 +2426,51 @@ Page({
     wx.showToast({ title: el.locked ? '已解锁' : '已锁定', icon: 'none', duration: 800 })
   },
 
+  // 统一选中元素
+  _selectElement(id, el) {
+    // 不重置 _toolbarDragOffset — 拖动偏移跨选中共享
+    this.setData({ selectedId: id, selectedElement: el })
+    this._updateToolbarFixedStyle()
+  },
+
+  // 工具栏固定水平居中，位置在浮动工具栏下方（一个工具栏高度 ≈ 72rpx）
+  _updateToolbarFixedStyle() {
+    const el = this._getSelectedElement()
+    if (!el) {
+      this.setData({ toolbarStyle: '' })
+      return
+    }
+    // 基准位置：topBar 底部 + 8rpx(浮动工具栏间距) + 96rpx(浮动工具栏高) + 72rpx(间距)
+    const baseTop = (this._topBarBottomRpx || 166) + 176
+    // 水平居中 375 = 750/2
+    const finalLeft = 375 + _toolbarDragOffset.x
+    const finalTop = baseTop + _toolbarDragOffset.y
+
+    const toolbarStyle = `position:fixed;left:${finalLeft}rpx;top:${finalTop}rpx;transform:translateX(-50%);opacity:0.9;pointer-events:auto;`
+    this.setData({ toolbarStyle })
+  },
+
+  // 工具栏拖动：短期调整位置，下次选中自动复位
+  onToolbarDragStart(e) {
+    const touch = e.touches[0]
+    this._toolbarDragStart = { x: touch.clientX, y: touch.clientY, offsetX: _toolbarDragOffset.x, offsetY: _toolbarDragOffset.y }
+  },
+  onToolbarDragMove(e) {
+    if (!this._toolbarDragStart) return
+    const touch = e.touches[0]
+    const dx = touch.clientX - this._toolbarDragStart.x
+    const dy = touch.clientY - this._toolbarDragStart.y
+    // clientX/clientY 是 px，转 rpx 作偏移量
+    const windowInfo = wx.getWindowInfo()
+    const rpxDx = (dx / windowInfo.windowWidth) * 750
+    const rpxDy = (dy / windowInfo.windowWidth) * 750
+    _toolbarDragOffset = { x: this._toolbarDragStart.offsetX + rpxDx, y: this._toolbarDragStart.offsetY + rpxDy }
+    this._updateToolbarFixedStyle()
+  },
+  onToolbarDragEnd() {
+    this._toolbarDragStart = null
+  },
+
   setSelectedEffect(e) {
     const el = this._getSelectedElement()
     if (!el || el.type !== 'image') return
@@ -2201,6 +2511,7 @@ Page({
       showTemplatePanel: false,
       showRectPanel: false,
       showBorderPanel: false,
+      showFillImagePanel: false,
       textPanelMode: 'rect',
       editingTextId: el.id,
       textInput: el.text || el.placeholderText || '',
@@ -2297,7 +2608,8 @@ Page({
       showTextPanel: false,
       showTemplatePanel: false,
       showRectPanel: false,
-      showBorderPanel: false
+      showBorderPanel: false,
+      showFillImagePanel: false
     })
   },
 
@@ -2367,7 +2679,7 @@ Page({
         this.openSelectedRectTextEditor()
         break
       case 'rect-image':
-        this.replaceRectWithImage(el)
+        this.fillRectWithImage(el)
         break
       case 'copy-style':
         this.copySelectedStyle()
@@ -2386,7 +2698,7 @@ Page({
         break
     }
   },
-  replaceRectWithImage(rectEl) {
+  fillRectWithImage(rectEl) {
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
@@ -2394,33 +2706,24 @@ Page({
       success: (res) => {
         const tempPath = res.tempFiles[0].tempFilePath
         fileUtil.persistFile(tempPath).then(savedSrc => {
-          // 替换矩形为图片
-          const imageEl = {
-            id: rectEl.id,
-            type: 'image',
-            src: savedSrc,
-            x: rectEl.x,
-            y: rectEl.y,
-            width: rectEl.width,
-            height: rectEl.height,
-            rotation: rectEl.rotation || 0,
-            scaleX: rectEl.scaleX || 1,
-            scaleY: rectEl.scaleY || 1,
-            zIndex: rectEl.zIndex,
-            effect: 'none'
-          }
-          this._updateElement(rectEl.id, imageEl)
-          this.setData({ selectedElement: imageEl })
+          // 填充图片到矩形内，保留矩形所有属性
+          this._updateElement(rectEl.id, {
+            fillImage: savedSrc,
+            fillColor: 'transparent',
+            fillImageOffsetX: 0,
+            fillImageOffsetY: 0
+          })
+          this.setData({ selectedElement: { ...rectEl, fillImage: savedSrc, fillColor: 'transparent', fillImageOffsetX: 0, fillImageOffsetY: 0 } })
           this.pushHistory()
           this.renderCanvas()
-          wx.showToast({ title: '已添加图片', icon: 'none' })
+          wx.showToast({ title: '已填充图片', icon: 'none' })
         }).catch(err => {
           console.error('保存图片失败', err)
           wx.showToast({ title: '保存图片失败', icon: 'none' })
         })
       },
       fail: () => {
-        // 用户取消选择，不做任何处理
+        // 用户取消选择
       }
     })
   },
@@ -2438,6 +2741,228 @@ Page({
   },
   closeBorderPanel() {
     this.setData({ showBorderPanel: false })
+  },
+
+  // ── 填充图片拖拽位置调整 ──
+
+  showFillImagePositionPanel() {
+    const el = this._getSelectedElement()
+    if (!el || !el.fillImage) return
+
+    // 缓存原始偏移值，取消时回退
+    this._fillImageOldOffsets = {
+      ox: el.fillImageOffsetX || 0,
+      oy: el.fillImageOffsetY || 0
+    }
+    this._fillImageDragEl = el
+    this._fillImageDragOffX = el.fillImageOffsetX || 0
+    this._fillImageDragOffY = el.fillImageOffsetY || 0
+
+    this.setData({ showFillImagePanel: true, fillImageDragReady: false })
+
+    // 等 canvas 挂载后渲染
+    wx.nextTick(() => { this._initFillImageDragCanvas() })
+  },
+
+  _initFillImageDragCanvas() {
+    const query = wx.createSelectorQuery()
+    query.select('#fillImageDragCanvas')
+      .fields({ node: true, size: true })
+      .exec((res) => {
+        if (!res || !res[0] || !res[0].node) {
+          // 重试一次
+          setTimeout(() => this._initFillImageDragCanvas(), 200)
+          return
+        }
+        this._fidmCanvas = res[0].node
+        this._fidmCtx = this._fidmCanvas.getContext('2d')
+        this._fidmW = res[0].width
+        this._fidmH = res[0].height
+        const dpr = wx.getSystemInfoSync().pixelRatio || 2
+        this._fidmCanvas.width = this._fidmW * dpr
+        this._fidmCanvas.height = this._fidmH * dpr
+        this._fidmCtx.scale(dpr, dpr)
+
+        // 确保图片已加载
+        const el = this._fillImageDragEl
+        const src = el.fillImage
+        let cached = imageCache.get(src)
+        if (!cached || !cached.loaded) {
+          // 异步加载
+          loadImage(src, this._fidmCanvas).then(() => {
+            this._renderFillImageDrag()
+          }).catch(() => {
+            this.setData({ fillImageDragReady: false })
+          })
+          return
+        }
+
+        this._renderFillImageDrag()
+      })
+  },
+
+  // 渲染拖拽画布：暗底 + 矩形透窗 + 内部图片
+  _renderFillImageDrag() {
+    const ctx = this._fidmCtx
+    const cw = this._fidmW, ch = this._fidmH
+    const el = this._fillImageDragEl
+    const cached = imageCache.get(el.fillImage)
+    if (!ctx || !cached || !cached.loaded) return
+
+    ctx.clearRect(0, 0, cw, ch)
+
+    const w = el.width, h = el.height
+    const pad = 60  // 四周留白
+    const scale = Math.min((cw - pad * 2) / w, (ch - pad * 2) / h)
+    const fw = w * scale, fh = h * scale
+    const fx = (cw - fw) / 2, fy = (ch - fh) / 2
+
+    const iw = cached.width, ih = cached.height
+    const imgScale = Math.max(fw / iw, fh / ih)
+    const sw = iw * imgScale, sh = ih * imgScale
+
+    this._fidmFrame = { fx, fy, fw, fh, sw, sh, scale, imgScale }
+    this._fidmMaxDx = Math.max(0, (sw - fw) / 2)
+    this._fidmMaxDy = Math.max(0, (sh - fh) / 2)
+
+    const ox = this._fillImageDragOffX, oy = this._fillImageDragOffY
+    const ix = fx - (sw - fw) / 2 + ox / 100 * this._fidmMaxDx
+    const iy = fy - (sh - fh) / 2 + oy / 100 * this._fidmMaxDy
+
+    // 1. 画图片
+    ctx.drawImage(cached.img, ix, iy, sw, sh)
+
+    // 2. 暗色遮罩 + 形状透窗 (evenodd)
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, 0, cw, ch)
+    this._fidmAddShapePath(ctx, fx, fy, fw, fh, el)
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'
+    ctx.fill('evenodd')
+    ctx.restore()
+
+    // 3. 边框
+    ctx.save()
+    ctx.beginPath()
+    this._fidmAddShapePath(ctx, fx, fy, fw, fh, el)
+    ctx.strokeStyle = el.strokeColor || '#00d992'
+    ctx.lineWidth = (el.strokeWidth || 3) * scale
+    ctx.setLineDash(el.lineStyle === 'dashed' ? [12 * scale, 8 * scale] : el.lineStyle === 'dotted' ? [4 * scale, 6 * scale] : [])
+    ctx.stroke()
+    ctx.restore()
+
+    if (!this.data.fillImageDragReady) {
+      this.setData({ fillImageDragReady: true })
+    }
+  },
+
+  _fidmAddShapePath(ctx, fx, fy, fw, fh, el) {
+    const shapeType = el.shapeType || 'rect'
+    if (shapeType === 'circle') {
+      ctx.arc(fx + fw / 2, fy + fh / 2, Math.min(fw, fh) / 2, 0, Math.PI * 2)
+    } else if (shapeType === 'ellipse') {
+      ctx.ellipse(fx + fw / 2, fy + fh / 2, fw / 2, fh / 2, 0, 0, Math.PI * 2)
+    } else if (shapeType === 'roundRect') {
+      const r = (el.borderRadius || 0) * (this._fidmFrame ? this._fidmFrame.scale : 1)
+      this._roundRect(ctx, fx, fy, fw, fh, r)
+    } else if (shapeType === 'heart') {
+      const s = Math.min(fw, fh) * 0.48
+      const cx = fx + fw / 2, cy = fy + fh / 2
+      ctx.moveTo(cx, cy - s * 0.3)
+      ctx.bezierCurveTo(cx - s * 0.45, cy - s * 0.6, cx - s * 0.55, cy - s * 0.1, cx, cy + s * 0.5)
+      ctx.bezierCurveTo(cx + s * 0.55, cy - s * 0.1, cx + s * 0.45, cy - s * 0.6, cx, cy - s * 0.3)
+    } else if (shapeType === 'star') {
+      const s = Math.min(fw, fh) * 0.45
+      const cx = fx + fw / 2, cy = fy + fh / 2
+      const innerR = s * 0.38, outerR = s
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? outerR : innerR
+        const angle = (i * Math.PI) / 5 - Math.PI / 2
+        const x = cx + Math.cos(angle) * r
+        const y = cy + Math.sin(angle) * r
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+    } else {
+      ctx.rect(fx, fy, fw, fh)
+    }
+  },
+
+  // 拖拽事件
+  onFillImageDragStart(e) {
+    if (!this._fidmFrame) return
+    const t = e.touches[0]
+    this._fidmDragBase = { x: t.x, y: t.y, ox: this._fillImageDragOffX, oy: this._fillImageDragOffY }
+  },
+
+  onFillImageDragMove(e) {
+    if (!this._fidmDragBase || !this._fidmFrame) return
+    const t = e.touches[0]
+    const dx = t.x - this._fidmDragBase.x
+    const dy = t.y - this._fidmDragBase.y
+
+    // 像素 → 百分比偏移
+    const pxPerPctX = this._fidmMaxDx / 100 || 1
+    const pxPerPctY = this._fidmMaxDy / 100 || 1
+    const newOx = Math.max(-100, Math.min(100, Math.round(this._fidmDragBase.ox + dx / pxPerPctX)))
+    const newOy = Math.max(-100, Math.min(100, Math.round(this._fidmDragBase.oy + dy / pxPerPctY)))
+
+    if (newOx !== this._fillImageDragOffX || newOy !== this._fillImageDragOffY) {
+      this._fillImageDragOffX = newOx
+      this._fillImageDragOffY = newOy
+      this._renderFillImageDrag()
+    }
+  },
+
+  onFillImageDragEnd() {
+    this._fidmDragBase = null
+  },
+
+  onFillImageDragReset() {
+    this._fillImageDragOffX = 0
+    this._fillImageDragOffY = 0
+    if (this._fidmCtx) this._renderFillImageDrag()
+  },
+
+  confirmFillImagePosition() {
+    // 应用到元素
+    const el = this._fillImageDragEl
+    if (el) {
+      this._updateElement(el.id, {
+        fillImageOffsetX: this._fillImageDragOffX,
+        fillImageOffsetY: this._fillImageDragOffY
+      })
+      this.setData({
+        selectedElement: { ...el, fillImageOffsetX: this._fillImageDragOffX, fillImageOffsetY: this._fillImageDragOffY }
+      })
+      this.pushHistory()
+      this.renderCanvas()
+    }
+    this._closeFillImagePanel()
+  },
+
+  closeFillImagePanel() {
+    // 取消：回退旧偏移值
+    const el = this._fillImageDragEl
+    if (el && this._fillImageOldOffsets) {
+      const old = this._fillImageOldOffsets
+      this._updateElement(el.id, { fillImageOffsetX: old.ox, fillImageOffsetY: old.oy })
+      this.setData({
+        selectedElement: { ...el, fillImageOffsetX: old.ox, fillImageOffsetY: old.oy }
+      })
+      this.renderCanvas()
+    }
+    this._closeFillImagePanel()
+  },
+
+  _closeFillImagePanel() {
+    this._fidmFrame = null
+    this._fidmDragBase = null
+    this._fidmCanvas = null
+    this._fidmCtx = null
+    this._fillImageDragEl = null
+    this._fillImageOldOffsets = null
+    this.setData({ showFillImagePanel: false, fillImageDragReady: false })
   },
   onBorderColor(e) {
     this.setData({ borderColor: e.currentTarget.dataset.color })
@@ -2501,6 +3026,7 @@ Page({
     this.historyIndex--
     const elements = JSON.parse(JSON.stringify(this.history[this.historyIndex]))
     this.setData({ elements, selectedId: null, selectedElement: null })
+    this._updateToolbarFixedStyle()
     this.updateHistoryState()
     this.savePage()
     this.renderCanvas()
@@ -2511,6 +3037,7 @@ Page({
     this.historyIndex++
     const elements = JSON.parse(JSON.stringify(this.history[this.historyIndex]))
     this.setData({ elements, selectedId: null, selectedElement: null })
+    this._updateToolbarFixedStyle()
     this.updateHistoryState()
     this.savePage()
     this.renderCanvas()
@@ -2635,17 +3162,38 @@ Page({
   },
 
   _buildTemplateElements(tmpl, baseElements = []) {
-    const fixedElements = (baseElements || [])
-      .filter(el => el.systemRole === 'theme-fixed')
-      .map((el, i) => ({ ...el, zIndex: i }))
-    const fixedIds = new Set(fixedElements.map(el => el.id))
-    const normalizedTemplate = storage.normalizePageElements(tmpl.elements || [])
+    // 模板完全替换页面元素（不再保留 theme-fixed 元素）
+    return storage.normalizePageElements(tmpl.elements || [])
       .map((el, i) => ({
         ...el,
-        id: fixedIds.has(el.id) ? `el_${Date.now()}_tmpl_${i}` : (el.id || `el_${Date.now()}_tmpl_${i}`),
-        zIndex: fixedElements.length + i + 1
+        id: el.id || `el_${Date.now()}_tmpl_${i}`,
+        zIndex: i + 1
       }))
-    return [...fixedElements, ...normalizedTemplate]
+  },
+
+  onClearPage() {
+    if (this.data.elements.length === 0) {
+      wx.showToast({ title: '页面已为空', icon: 'none' })
+      return
+    }
+    wx.showModal({
+      title: '清空页面',
+      content: '确认清空当前页面所有内容？此操作可撤销。',
+      success: (res) => {
+        if (res.confirm) {
+          this.setData({
+            elements: [],
+            selectedId: null,
+            selectedElement: null,
+            showTemplatePanel: false
+          })
+          this._updateToolbarFixedStyle()
+          this.pushHistory()
+          this.renderCanvas()
+          wx.showToast({ title: '已清空', icon: 'none' })
+        }
+      }
+    })
   },
 
   onTapTemplate(e) {
@@ -2671,6 +3219,7 @@ Page({
             selectedElement: null,
             showTemplatePanel: false
           })
+          this._updateToolbarFixedStyle()
           this.pushHistory()
           this.renderCanvas()
           wx.showToast({ title: '已应用模板', icon: 'none' })
@@ -2769,6 +3318,7 @@ Page({
   exportImage() {
     // 取消选中以获得干净的导出
     this.setData({ selectedId: null, selectedElement: null })
+    this._updateToolbarFixedStyle()
     this._syncSave()
     this.renderCanvas()
 
@@ -2834,6 +3384,7 @@ Page({
       label: this._getLayerName(el, safeStart + i),
       fn: () => {
         this.setData({ selectedId: el.id, selectedElement: el })
+          this._updateToolbarFixedStyle()
         this.renderCanvas()
       }
     }))
@@ -2862,7 +3413,50 @@ Page({
     this.setData({ showBgPanel: !this.data.showBgPanel, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false })
   },
   toggleStickerPanel() {
-    this.setData({ showStickerPanel: !this.data.showStickerPanel, showBgPanel: false, showTextPanel: false, showTemplatePanel: false })
+    const opening = !this.data.showStickerPanel
+    const data = { showStickerPanel: opening, showBgPanel: false, showTextPanel: false, showTemplatePanel: false }
+    if (opening) {
+      data.panelSearchKeyword = ''
+      data.panelActiveCategory = 'all'
+      data.stickers = storage.getStickers()
+      data.panelCategories = this._loadPanelCategories()
+    }
+    this.setData(data)
+  },
+  _loadPanelCategories() {
+    const groups = storage.getGroups()
+    const cats = [{ key: 'all', name: '全部' }]
+    groups.forEach(g => cats.push({ key: g, name: g }))
+    return cats
+  },
+  onPanelSearchInput(e) {
+    const keyword = e.detail.value
+    this.setData({ panelSearchKeyword: keyword })
+    this._applyPanelFilter()
+  },
+  onPanelCategoryTap(e) {
+    const key = e.currentTarget.dataset.key
+    this.setData({ panelActiveCategory: key })
+    this._applyPanelFilter()
+  },
+  _applyPanelFilter() {
+    const { panelSearchKeyword, panelActiveCategory } = this.data
+    let all = storage.getStickers()
+    // 分组过滤
+    if (panelActiveCategory && panelActiveCategory !== 'all') {
+      all = all.filter(s => s.group === panelActiveCategory)
+    }
+    // 关键词搜索
+    if (panelSearchKeyword) {
+      const kw = panelSearchKeyword.toLowerCase()
+      all = all.filter(s => {
+        if (s.group && s.group.toLowerCase().includes(kw)) return true
+        if (s.tags && s.tags.some(t => t.toLowerCase().includes(kw))) return true
+        if (s.category && s.category.toLowerCase().includes(kw)) return true
+        return false
+      })
+    }
+    this.setData({ stickers: all })
   },
   toggleTextPanel() {
     const opening = !this.data.showTextPanel
@@ -2898,53 +3492,6 @@ Page({
       showTemplatePanel: false
     })
   },
-  insertNowComponent() {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, '0')
-    const day = String(now.getDate()).padStart(2, '0')
-    const hours = String(now.getHours()).padStart(2, '0')
-    const minutes = String(now.getMinutes()).padStart(2, '0')
-    const dateStr = `${year}.${month}.${day}`
-    const timeStr = `${hours}:${minutes}`
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-    const weekday = weekdays[now.getDay()]
-
-    const maxZ = Math.max(0, ...this.data.elements.map(el => el.zIndex || 0))
-
-    const nowElement = {
-      id: 'el_' + Date.now(),
-      type: 'decoration',
-      subType: 'rect',
-      shapeType: 'roundRect',
-      x: 540,
-      y: 780,
-      width: 240,
-      height: 120,
-      rotation: -3,
-      scaleX: 1,
-      scaleY: 1,
-      zIndex: maxZ + 1,
-      fillColor: '#FFF8F0',
-      strokeColor: '#C4956A',
-      strokeWidth: 1.5,
-      lineStyle: 'solid',
-      borderRadius: 12,
-      text: `${dateStr} ${weekday}\n${timeStr}\n📍 地点\n今日记录`,
-      textColor: '#5A4A3A',
-      textFontSize: 18,
-      fontFamily: 'handwriting',
-      textAlign: 'center',
-      textVertical: 'middle'
-    }
-
-    const elements = [...this.data.elements, nowElement]
-    this.setData({ elements, selectedId: nowElement.id, selectedElement: nowElement })
-    this.pushHistory()
-    this.renderCanvas()
-    wx.vibrateShort({ type: 'light' })
-    wx.showToast({ title: '已插入当下标签', icon: 'none' })
-  },
   closeAllPanels() {
     this.setData({
       showBgPanel: false,
@@ -2953,6 +3500,7 @@ Page({
       showTemplatePanel: false,
       showRectPanel: false,
       showBorderPanel: false,
+      showFillImagePanel: false,
       showSelectedMorePanel: false,
       selectedMoreActions: [],
       selectedMoreTitle: '',
@@ -3242,6 +3790,7 @@ Page({
       isCoverPage: page.role === 'cover',
       stickers: storage.getStickers()
     })
+    this._updateToolbarFixedStyle()
 
     // 恢复目标页的历史记录，如果没有则初始化
     if (!this.pageHistories) {
@@ -3268,6 +3817,7 @@ Page({
     if (nextMode === 'preview') {
       this._syncSave()
       this.setData({ selectedId: null, selectedElement: null })
+      this._updateToolbarFixedStyle()
     }
     this.setData({ editorMode: nextMode, flipClass: '' })
     this._resetPreviewFlip()

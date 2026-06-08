@@ -3,7 +3,7 @@
  * 将临时文件持久化到用户目录
  */
 
-function persistFile(tempPath) {
+function persistFile(tempPath, suffix) {
   return new Promise((resolve, reject) => {
     // 如果已经是持久路径，直接返回
     if (tempPath.indexOf(wx.env.USER_DATA_PATH) === 0) {
@@ -13,7 +13,8 @@ function persistFile(tempPath) {
 
     const fs = wx.getFileSystemManager()
     const ext = tempPath.split('.').pop() || 'png'
-    const destPath = `${wx.env.USER_DATA_PATH}/persist_${Date.now()}.${ext}`
+    const uniqId = suffix !== undefined ? `${Date.now()}_${suffix}` : `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    const destPath = `${wx.env.USER_DATA_PATH}/persist_${uniqId}.${ext}`
 
     fs.copyFile({
       srcPath: tempPath,

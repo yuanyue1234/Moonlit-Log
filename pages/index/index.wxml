@@ -10,10 +10,6 @@
         <view class="btn btn-icon" bindtap="onTapCreate" hover-class="action-hover">
           <text class="icon-add">+</text>
         </view>
-        <view class="btn btn-collect" bindtap="onTapCollect" hover-class="action-hover">
-          <image class="collect-icon" src="/assets/icons/camera.svg" mode="aspectFit" />
-          <text>保存收藏物</text>
-        </view>
       </view>
     </view>
     <view class="dashed-divider"></view>
@@ -26,6 +22,17 @@
       <view class="continue-meta">{{lastEditedBook.pageCount}} 页 · {{lastEditedBook.timeAgo}}</view>
     </view>
     <view class="continue-arrow">›</view>
+  </view>
+
+  <view class="export-card" wx:if="{{exporting}}">
+    <view class="export-left">
+      <view class="export-label">正在导出…</view>
+      <view class="export-name">{{exportStatus}}</view>
+      <view class="export-progress" wx:if="{{exportTotal > 0}}">第 {{exportProgress}} / {{exportTotal}} 页</view>
+    </view>
+    <view class="export-spinner">
+      <view class="spin-ring"></view>
+    </view>
   </view>
 
   <scroll-view scroll-y class="book-list" enhanced show-scrollbar="{{false}}">
@@ -48,7 +55,6 @@
               <view class="cover-page-line line-c"></view>
             </view>
           </block>
-          <view class="cover-theme-tag tag">{{item.themeInfo.name}}</view>
         </view>
         <view class="book-info">
           <view class="book-name">{{item.name}}</view>
@@ -104,6 +110,25 @@
               </view>
             </view>
           </scroll-view>
+        </view>
+        <view class="input-group">
+          <text class="input-label">封面图片</text>
+          <view class="cover-picker" bindtap="onCreateChooseCover">
+            <image wx:if="{{creatingCoverImage}}" class="cover-preview" src="{{creatingCoverImage}}" mode="aspectFill" />
+            <view wx:else class="cover-placeholder">
+              <text>点击选择封面</text>
+            </view>
+          </view>
+        </view>
+        <view class="input-group">
+          <text class="input-label">标签</text>
+          <view class="tags-editor">
+            <view class="tag-chip" wx:for="{{creatingTags}}" wx:key="*this">
+              <text>{{item}}</text>
+              <text class="tag-remove" catchtap="onCreateRemoveTag" data-index="{{index}}">×</text>
+            </view>
+            <input class="tag-input" placeholder="输入标签回车添加" placeholder-class="input-placeholder" value="{{newCreateTagInput}}" bindinput="onCreateTagInput" bindconfirm="onCreateAddTag" />
+          </view>
         </view>
       </view>
       <view class="modal-footer">

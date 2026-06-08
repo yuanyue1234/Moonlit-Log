@@ -13,6 +13,12 @@
     "backgroundColor": "#1a1a1a",
     "backgroundTextStyle": "light"
   },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "你的位置信息将用于添加到「地点」手帐组件"
+    }
+  },
+  "requiredPrivateInfos": ["chooseLocation"],
   "tabBar": {
     "color": "#8b949e",
     "selectedColor": "#00d992",
@@ -27,13 +33,12 @@
       },
       {
         "pagePath": "pages/stickers/stickers",
-        "text": "贴纸",
+        "text": "素材库",
         "iconPath": "images/tab-sticker.png",
         "selectedIconPath": "images/tab-sticker-active.png"
       }
     ]
   },
   "style": "v2",
-  "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents"
+  "sitemapLocation": "sitemap.json"
 }

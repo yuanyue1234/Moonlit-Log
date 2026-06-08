@@ -187,27 +187,30 @@ Page({
     this.loadStickers()
   },
 
-  quickAddToBook(e) {
+  quickMoveGroup(e) {
     const id = e.currentTarget.dataset.id
-    const books = storage.getBooks()
-    if (books.length === 0) {
-      wx.showToast({ title: '还没有手账本', icon: 'none' })
-      return
-    }
-    if (books.length === 1) {
-      this._addStickerToBook(id, books[0].id)
-      return
-    }
-    this.setData({ showBookPicker: true, books, selectedStickerId: id })
-  },
+    const sticker = this.data.stickers.find(s => s.id === id)
+    if (!sticker) return
 
-  onPickBook(e) {
-    const bookId = e.currentTarget.dataset.bookId
-    const stickerId = this.data.selectedStickerId
-    this.setData({ showBookPicker: false })
-    if (stickerId && bookId) {
-      this._makeJournal(stickerId, bookId)
+    const groups = storage.getGroups()
+    if (groups.length === 0) {
+      wx.showToast({ title: '还没有分组，请先创建', icon: 'none' })
+      return
     }
+    // 过滤掉当前所在分组
+    const otherGroups = groups.filter(g => g !== sticker.group)
+    const itemList = otherGroups.length > 0 ? otherGroups : groups
+
+    wx.showActionSheet({
+      itemList,
+      success: (res) => {
+        const targetGroup = itemList[res.tapIndex]
+        storage.updateSticker(id, { group: targetGroup })
+        this.loadStickers()
+        this.setData({ selectedStickerId: null })
+        wx.showToast({ title: '已移动到「' + targetGroup + '」', icon: 'none' })
+      }
+    })
   },
 
   closeBookPicker() {
@@ -235,50 +238,6 @@ Page({
     wx.navigateTo({
       url: `/pages/editor/editor?bookId=${bookId}&stickerId=${encodeURIComponent(stickerId)}&fromCollect=1`
     })
-    this.setData({ selectedStickerId: null })
-  },
-
-  _addStickerToBook(stickerId, bookId) {
-    const sticker = this.data.stickers.find(s => s.id === stickerId)
-    if (!sticker) return
-
-    let pages = storage.getPages(bookId)
-    if (pages.length === 0) {
-      storage.ensureCoverPage(bookId)
-      pages = storage.getPages(bookId)
-    }
-    let targetPage
-    const contentPages = pages.filter(page => page.role !== 'cover')
-    if (contentPages.length > 0) {
-      targetPage = contentPages[contentPages.length - 1]
-    } else {
-      targetPage = storage.createPage(bookId)
-    }
-
-    // 在目标页添加贴纸元素
-    const page = storage.getPageById(targetPage.id)
-    if (!page) return
-
-    const maxZ = Math.max(0, ...(page.elements || []).map(el => el.zIndex || 0))
-    const newEl = {
-      id: 'el_' + Date.now(),
-      type: 'image',
-      src: sticker.src,
-      x: 345,
-      y: 460,
-      width: 200,
-      height: 200,
-      rotation: 0,
-      scaleX: 1,
-      scaleY: 1,
-      effect: sticker.effect || 'none',
-      zIndex: maxZ + 1
-    }
-
-    const elements = [...(page.elements || []), newEl]
-    storage.updatePage(targetPage.id, { elements })
-
-    wx.showToast({ title: '已添加到手账本', icon: 'none' })
     this.setData({ selectedStickerId: null })
   },
 
@@ -328,6 +287,15 @@ Page({
       isEditing: next,
       selectedStickerId: null  // 进出编辑模式清除选中
     })
+  },
+
+  onPickBook(e) {
+    const bookId = e.currentTarget.dataset.bookId
+    const stickerId = this.data.selectedStickerId
+    this.setData({ showBookPicker: false })
+    if (stickerId && bookId) {
+      this._makeJournal(stickerId, bookId)
+    }
   },
 
   // 编辑模式下删除分组（无需确认）
@@ -425,9 +393,13 @@ Page({
         wx.showLoading({ title: '保存中...' })
         let savedCount = 0
 
-        for (const file of res.tempFiles) {
+        const activeCategory = this.data.activeCategory
+        const targetGroup = (activeCategory !== 'all' && activeCategory !== 'favorite') ? activeCategory : ''
+
+        for (let i = 0; i < res.tempFiles.length; i++) {
+          const file = res.tempFiles[i]
           try {
-            const savedPath = await fileUtil.persistFile(file.tempFilePath)
+            const savedPath = await fileUtil.persistFile(file.tempFilePath, i)
             // 获取图片真实尺寸
             let originalWidth = 0, originalHeight = 0
             try {
@@ -450,7 +422,8 @@ Page({
               source: 'upload',
               tags: [],
               originalWidth,
-              originalHeight
+              originalHeight,
+              group: targetGroup
             })
             savedCount++
           } catch (err) {

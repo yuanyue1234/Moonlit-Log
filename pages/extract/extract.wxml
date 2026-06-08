@@ -3,7 +3,7 @@
     <view class="section-header">
       <view class="eyebrow">COLLECT ITEM</view>
       <view class="page-title">保存收藏物</view>
-      <view class="subtitle">拍摄或上传小卡、票根、周边，自动去背景并保存</view>
+      <view class="subtitle">拍摄或上传小卡、票根、周边，保存到素材库</view>
     </view>
     <view class="dashed-divider"></view>
 
@@ -47,7 +47,7 @@
   <view class="done-view" wx:if="{{step === 'done'}}">
     <view class="section-header compact">
       <view class="eyebrow">COLLECTION READY</view>
-      <view class="page-title">已识别收藏物</view>
+      <view class="page-title">已保存收藏物</view>
     </view>
 
     <view class="result-image-wrapper effect-{{postProcessEffect}}" bindtap="previewImage">
@@ -82,14 +82,10 @@
       </view>
     </view>
 
-    <view class="debug-info" wx:if="{{debugInfo}}">
-      <text class="debug-text">remove.bg: {{debugInfo.removeBgMs}}ms · 输入: {{debugInfo.inputSizeKB}}KB</text>
-    </view>
-
     <view class="action-area">
       <view class="btn btn-primary" bindtap="saveToLibrary">保存到素材库</view>
       <view class="btn btn-secondary action-gap" bindtap="makeIntoJournal">做成手帐</view>
-      <view class="btn btn-ghost action-gap" bindtap="reset">重新提取</view>
+      <view class="btn btn-ghost action-gap" bindtap="reset">重新选择</view>
     </view>
   </view>
 
@@ -98,8 +94,6 @@
       <image class="extract-icon-img alert" src="{{errorCode === 'NETWORK_ERROR' ? '/assets/icons/wifi-off.svg' : '/assets/icons/circle-alert.svg'}}" mode="aspectFit" />
     </view>
     <view class="error-text">{{errorMessage}}</view>
-    <view class="error-hint" wx:if="{{errorCode === 'REMOVE_BG_TIMEOUT'}}">remove.bg 处理较慢，请换小图或稍后重试。</view>
-    <view class="error-hint" wx:if="{{errorCode === 'NETWORK_ERROR'}}">请确认小程序 request 合法域名已配置：https://api.remove.bg</view>
     <view class="error-hint" wx:if="{{errorCode === 'IMAGE_TOO_LARGE'}}">建议裁剪主体区域后重新上传。</view>
     <view class="btn-group">
       <view class="btn btn-primary error-btn" bindtap="retryFromLast" wx:if="{{lastImagePath}}">重新处理</view>

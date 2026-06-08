@@ -61,6 +61,40 @@
 .continue-meta { font-size: 22rpx; color: #8b949e; }
 .continue-arrow { font-size: 32rpx; color: #00d992; font-weight: 300; }
 
+/* 导出进度卡片 */
+.export-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 var(--home-side-padding) 24rpx;
+  padding: 24rpx 28rpx;
+  background: linear-gradient(135deg, rgba(255,193,7,0.08), rgba(255,193,7,0.02));
+  border: 1rpx solid rgba(255,193,7,0.35);
+  border-radius: 16rpx;
+}
+.export-left { display: flex; flex-direction: column; gap: 4rpx; }
+.export-label {
+  font-size: 20rpx; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 3rpx; color: #ffc107;
+}
+.export-name { font-size: 26rpx; font-weight: 500; color: #f2f2f2; }
+.export-progress {
+  font-size: 20rpx; color: #ffc107;
+}
+.export-spinner {
+  width: 44rpx; height: 44rpx;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.spin-ring {
+  width: 32rpx; height: 32rpx;
+  border: 3rpx solid rgba(255,193,7,0.2);
+  border-top-color: #ffc107;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* 手账本网格 */
 .book-list {
   height: calc(100vh - 240rpx);

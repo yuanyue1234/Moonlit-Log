@@ -18,7 +18,16 @@ Page({
     // 封面和标签
     editingCoverImage: '',
     editingTags: [],
-    newTagInput: ''
+    newTagInput: '',
+    // 新建手帐本 - 封面和标签
+    creatingCoverImage: '',
+    creatingTags: [],
+    newCreateTagInput: '',
+    // 导出状态
+    exporting: false,
+    exportStatus: '',
+    exportProgress: 0,
+    exportTotal: 0
   },
 
   onLoad() {
@@ -77,15 +86,15 @@ Page({
     this.onTapBook({ currentTarget: { dataset: { id: lastEditedBook.id } } })
   },
 
-  // 点击手账本 - 打开最后一页（无动画）
+  // 点击手账本 - 打开封面页（第一页）
   onTapBook(e) {
     const bookId = e.currentTarget.dataset.id
 
-    // 获取该手账本的所有页面，打开最后一页
+    // 获取该手账本的所有页面，打开封面页（第一页）
     const pages = storage.getPages(bookId)
     if (pages.length > 0) {
-      const lastPage = pages[pages.length - 1]
-      wx.navigateTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${lastPage.id}` })
+      const coverPage = pages[0]
+      wx.navigateTo({ url: `/pages/editor/editor?bookId=${bookId}&pageId=${coverPage.id}` })
     } else {
       // 没有页面时先补封面页
       const newPage = storage.ensureCoverPage(bookId)
@@ -95,7 +104,7 @@ Page({
 
   // 创建手账本
   onTapCreate() {
-    this.setData({ showCreateModal: true, newBookName: '', selectedTheme: 'cream' })
+    this.setData({ showCreateModal: true, newBookName: '', selectedTheme: 'cream', creatingCoverImage: '', creatingTags: [], newCreateTagInput: '' })
   },
 
   onInputName(e) {
@@ -107,15 +116,61 @@ Page({
   },
 
   onConfirmCreate() {
+    const { creatingCoverImage, creatingTags } = this.data
     const name = this.data.newBookName.trim() || '新手账本'
-    storage.createBook({ name, theme: this.data.selectedTheme, cover: 'default' })
+    storage.createBook({ name, theme: this.data.selectedTheme, cover: 'default', coverImage: creatingCoverImage, tags: creatingTags })
     this.setData({ showCreateModal: false })
     this.loadBooks()
     wx.showToast({ title: '创建成功', icon: 'none' })
   },
 
   onCancelCreate() {
-    this.setData({ showCreateModal: false })
+    this.setData({ showCreateModal: false, creatingCoverImage: '', creatingTags: [], newCreateTagInput: '' })
+  },
+
+  // 新建 - 选择封面图片
+  onCreateChooseCover() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album'],
+      success: (res) => {
+        const tempPath = res.tempFiles[0].tempFilePath
+        const fileUtil = require('../../utils/file')
+        fileUtil.persistFile(tempPath).then(savedSrc => {
+          this.setData({ creatingCoverImage: savedSrc })
+        }).catch(() => {
+          this.setData({ creatingCoverImage: tempPath })
+        })
+      }
+    })
+  },
+
+  onCreateTagInput(e) {
+    this.setData({ newCreateTagInput: e.detail.value })
+  },
+
+  onCreateAddTag() {
+    const tag = this.data.newCreateTagInput.trim()
+    if (!tag) return
+    const tags = [...this.data.creatingTags]
+    if (tags.includes(tag)) {
+      wx.showToast({ title: '标签已存在', icon: 'none' })
+      return
+    }
+    if (tags.length >= 5) {
+      wx.showToast({ title: '最多5个标签', icon: 'none' })
+      return
+    }
+    tags.push(tag)
+    this.setData({ creatingTags: tags, newCreateTagInput: '' })
+  },
+
+  onCreateRemoveTag(e) {
+    const index = e.currentTarget.dataset.index
+    const tags = [...this.data.creatingTags]
+    tags.splice(index, 1)
+    this.setData({ creatingTags: tags })
   },
 
   // 编辑
@@ -219,12 +274,56 @@ Page({
   onLongPressBook(e) {
     const bookId = e.currentTarget.dataset.id
     wx.showActionSheet({
-      itemList: ['编辑', '删除'],
+      itemList: ['编辑', '导出PDF', '删除'],
       success: (res) => {
         if (res.tapIndex === 0) this.onTapEditBook({ currentTarget: { dataset: { id: bookId } } })
-        else if (res.tapIndex === 1) this.onTapDeleteBook({ currentTarget: { dataset: { id: bookId } } })
+        else if (res.tapIndex === 1) this.onExportPdf(bookId)
+        else if (res.tapIndex === 2) this.onTapDeleteBook({ currentTarget: { dataset: { id: bookId } } })
       }
     })
+  },
+
+  async onExportPdf(bookId) {
+    // 防止重复导出
+    if (this.data.exporting) return
+    this.setData({ exporting: true, exportStatus: '', exportProgress: 0, exportTotal: 0 })
+
+    try {
+      const pdfUtil = require('../../utils/pdf')
+      const result = await pdfUtil.exportBookToPdf(bookId, (info) => {
+        // 后台静默更新进度
+        if (info.stage === 'rendering') {
+          this.setData({
+            exportStatus: `正在导出「${info.bookName}」`,
+            exportProgress: info.current,
+            exportTotal: info.total
+          })
+        } else if (info.stage === 'done') {
+          this.setData({ exportStatus: '', exportProgress: 0, exportTotal: 0, exporting: false })
+          // 导出成功弹窗
+          wx.showModal({
+            title: '导出成功',
+            content: `「${info.bookName}」已导出为 PDF（${info.total} 页）`,
+            confirmText: '打开查看',
+            cancelText: '关闭',
+            success: (modalRes) => {
+              if (modalRes.confirm && info.pdfPath) {
+                wx.openDocument({ filePath: info.pdfPath, showMenu: true })
+              }
+            }
+          })
+        }
+      })
+
+      // 这里 done 回调已经在上面处理了，但防止 done 没触发
+      if (result && result.pdfPath) {
+        this.setData({ exporting: false, exportStatus: '', exportProgress: 0, exportTotal: 0 })
+      }
+    } catch (err) {
+      console.error('[index] export pdf failed:', err)
+      this.setData({ exporting: false, exportStatus: '', exportProgress: 0, exportTotal: 0 })
+      wx.showToast({ title: '导出失败: ' + (err.message || '未知错误'), icon: 'none' })
+    }
   },
 
   stopPropagation() {}

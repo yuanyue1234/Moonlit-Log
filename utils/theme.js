@@ -4,6 +4,21 @@
  */
 
 const THEMES = {
+  none: {
+    name: '无风格',
+    bg: '#FFFFFF',
+    cardBg: '#FFFFFF',
+    primary: '#555555',
+    secondary: '#999999',
+    accent: '#CCCCCC',
+    text: '#333333',
+    textLight: '#999999',
+    pageBackgrounds: ['#FFFFFF'],
+    patterns: ['blank'],
+    fonts: ['手写', '简约', '可爱'],
+    stickers: [],
+    tapes: []
+  },
   cream: {
     name: '奶油风',
     bg: '#FFFAF5',

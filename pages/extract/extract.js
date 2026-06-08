@@ -1,13 +1,10 @@
 // pages/extract/extract.js - AI material extraction
 const storage = require('../../utils/storage')
-const aiUtil = require('../../utils/ai')
 const fileUtil = require('../../utils/file')
 
 const STAGE_TEXT = {
   compressing: '正在压缩图片...',
   ready: '准备上传...',
-  uploading: '正在上传到 remove.bg...',
-  processing: 'remove.bg 正在去背景...',
   saving: '正在保存结果...'
 }
 
@@ -16,6 +13,7 @@ Page({
     step: 'idle',
     originalImage: '',
     processedImage: '',
+    originalUploadImage: '',
     progress: 0,
     stageText: '',
     uploadPercent: 0,
@@ -25,12 +23,11 @@ Page({
     errorMessage: '',
     errorCode: '',
     lastImagePath: '',
-    monthlyRemaining: 50,
     currentStyle: 'none',
     showStylePicker: false,
-    postProcessEffect: 'white-border',
+    postProcessEffect: 'none',
     postProcessOptions: [
-      { key: 'none', name: '无效果', desc: '保留透明 PNG 原样', icon: '/assets/icons/x.svg' },
+      { key: 'none', name: '无效果', desc: '保留原样', icon: '/assets/icons/x.svg' },
       { key: 'white-border', name: '白边', desc: '主体轮廓描边', icon: '/assets/icons/sticker.svg' },
       { key: 'paper', name: '纸贴', desc: '贴合主体轮廓的纸边', icon: '/assets/icons/file-text.svg' },
       { key: 'shadow', name: '阴影', desc: '主体轮廓阴影', icon: '/assets/icons/layers.svg' }
@@ -46,8 +43,6 @@ Page({
   onShow() {
     this.loadRecent()
     this.loadGroups()
-    const usage = aiUtil.checkUsageLimit()
-    this.setData({ monthlyRemaining: usage.remaining })
   },
 
   loadGroups() {
@@ -81,27 +76,16 @@ Page({
   },
 
   async startProcessing(imagePath) {
-    const usage = aiUtil.checkUsageLimit()
-    if (!usage.allowed) {
-      this.setData({
-        step: 'error',
-        errorMessage: '本月可用次数已用完',
-        errorCode: 'LIMIT',
-        lastImagePath: imagePath
-      })
-      return
-    }
-
     this.setData({
       step: 'processing',
       originalImage: imagePath,
-      progress: 5,
-      stageText: '正在准备图片...',
+      progress: 10,
+      stageText: '正在保存图片...',
       uploadPercent: 0,
       errorMessage: '',
       errorCode: '',
       lastImagePath: imagePath,
-      autoTags: [],
+      autoTags: ['素材'],
       labels: null,
       debugInfo: null,
       extractResultId: '',
@@ -110,41 +94,29 @@ Page({
     })
 
     try {
-      const result = await aiUtil.extractSubject(imagePath, (info = {}) => {
-        this.setData({
-          progress: info.progress || this.data.progress,
-          uploadPercent: info.uploadPercent || this.data.uploadPercent,
-          stageText: STAGE_TEXT[info.stage] || this.data.stageText || '正在处理...'
-        })
-      })
-
-      let savedPath = result.resultPath
-      try {
-        savedPath = await fileUtil.persistFile(result.resultPath)
-      } catch (err) {
-        console.warn('[extract] persist skipped:', err)
-      }
+      // 直接持久化原图，不做 remove.bg 去背景
+      let savedPath = await fileUtil.persistFile(imagePath)
 
       this.setData({
         step: 'done',
         processedImage: savedPath,
+        originalUploadImage: savedPath,
         progress: 100,
-        stageText: '处理完成',
+        stageText: '保存完成',
         uploadPercent: 100,
-        autoTags: result.tags || ['素材', '去背景'],
-        labels: result.labels || null,
-        debugInfo: result.debug || null,
-        monthlyRemaining: aiUtil.checkUsageLimit().remaining,
+        autoTags: ['素材'],
+        labels: null,
+        debugInfo: null,
         extractResultId: 'extract_' + Date.now(),
         savedStickerId: '',
         isSaving: false,
-        postProcessEffect: 'white-border'
+        postProcessEffect: 'none'
       })
     } catch (err) {
-      console.error('[extract] failed:', err)
+      console.error('[extract] save failed:', err)
       this.setData({
         step: 'error',
-        errorMessage: err.message || '处理失败，请重试',
+        errorMessage: err.message || '保存失败，请重试',
         errorCode: err.code || 'UNKNOWN_ERROR',
         lastImagePath: imagePath
       })
@@ -254,6 +226,7 @@ Page({
       step: 'idle',
       originalImage: '',
       processedImage: '',
+      originalUploadImage: '',
       progress: 0,
       stageText: '',
       uploadPercent: 0,
@@ -266,7 +239,7 @@ Page({
       extractResultId: '',
       savedStickerId: '',
       isSaving: false,
-      postProcessEffect: 'white-border'
+      postProcessEffect: 'none'
     })
   },
 

@@ -81,7 +81,7 @@ function updateBook(bookId, data) {
   if (index === -1) return null
   books[index] = { ...books[index], ...data, updatedAt: Date.now() }
   saveBooks(books)
-  if (['name', 'theme', 'tags'].some(key => Object.prototype.hasOwnProperty.call(data, key))) {
+  if (['name', 'theme', 'tags', 'coverImage'].some(key => Object.prototype.hasOwnProperty.call(data, key))) {
     refreshCoverPage(bookId)
     return getBookById(bookId)
   }
@@ -143,6 +143,7 @@ function withAlpha(hex, alpha) {
 
 function getCoverProfile(themeKey) {
   const profiles = {
+    none: { texture: 'none', pattern: 'blank', pageTextures: ['none'], pagePatterns: ['blank'], titleY: 230 },
     cream: { texture: 'watercolor', pattern: 'dots', pageTextures: ['grain', 'watercolor', 'linen'], pagePatterns: ['blank', 'dots', 'lines'], titleY: 230 },
     vintage: { texture: 'kraft', pattern: 'lines', pageTextures: ['kraft', 'grain', 'linen'], pagePatterns: ['lines', 'blank', 'grid'], titleY: 240 },
     korean: { texture: 'grain', pattern: 'dots', pageTextures: ['grain', 'canvas', 'watercolor'], pagePatterns: ['dots', 'blank', 'grid'], titleY: 220 },
@@ -156,10 +157,36 @@ function getCoverProfile(themeKey) {
 }
 
 function buildCoverPageElements(book, themeInfo) {
-  const tags = (book.tags && book.tags.length > 0 ? book.tags : ['封面', themeInfo.name]).slice(0, 4)
+  // 无风格：极简封面，仅书名 + 封面图片
+  if (book.theme === 'none' || themeInfo.name === '无风格') {
+    const noneElements = [{
+      systemRole: 'cover-fixed',
+      type: 'text',
+      x: 345, y: 400,
+      width: 500, height: 120,
+      text: book.name || '新手帐本',
+      color: '#333333',
+      fontSize: 44,
+      fontFamily: 'handwriting',
+      zIndex: 3
+    }]
+    if (book.coverImage) {
+      noneElements.unshift({
+        systemRole: 'cover-fixed',
+        type: 'image',
+        src: book.coverImage,
+        x: 345, y: 300,
+        width: 400, height: 400,
+        zIndex: 1
+      })
+    }
+    return noneElements
+  }
+
+  const tags = (book.tags && book.tags.length > 0 ? book.tags : []).slice(0, 4)
   const profile = getCoverProfile(book.theme)
-  const tagStartX = 345 - (tags.length - 1) * 78
-  const tagElements = tags.map((tag, i) => ({
+  const tagStartX = tags.length > 0 ? 345 - (tags.length - 1) * 78 : 345
+  const tagElements = tags.length > 0 ? tags.map((tag, i) => ({
     systemRole: 'cover-fixed',
     type: 'decoration',
     subType: 'rect',
@@ -177,9 +204,9 @@ function buildCoverPageElements(book, themeInfo) {
     textColor: themeInfo.text,
     textFontSize: 20,
     zIndex: 6 + i
-  }))
+  })) : []
 
-  return [
+  const baseElements = [
     {
       systemRole: 'cover-fixed',
       type: 'decoration',
@@ -210,7 +237,7 @@ function buildCoverPageElements(book, themeInfo) {
       strokeWidth: 1,
       lineStyle: 'solid',
       borderRadius: 27,
-      text: `主题风格 · ${themeInfo.name}`,
+      text: `主题风格 \u00b7 ${themeInfo.name}`,
       textColor: themeInfo.text,
       textFontSize: 22,
       zIndex: 2
@@ -237,26 +264,45 @@ function buildCoverPageElements(book, themeInfo) {
       width: 380,
       color: themeInfo.primary,
       zIndex: 3
-    },
-    {
+    }
+  ]
+
+  // 展示区：有封面图片则显示图片，否则显示虚线占位框
+  if (book.coverImage) {
+    baseElements.push({
+      systemRole: 'cover-fixed',
+      type: 'image',
+      src: book.coverImage,
+      x: 345,
+      y: 490,
+      width: 360,
+      height: 360,
+      zIndex: 4
+    })
+  } else {
+    baseElements.push({
       systemRole: 'cover-fixed',
       type: 'decoration',
       subType: 'rect',
       shapeType: 'roundRect',
       x: 345,
-      y: 475,
-      width: 430,
-      height: 150,
+      y: 495,
+      width: 400,
+      height: 120,
       fillColor: withAlpha(themeInfo.accent, 0.1),
       strokeColor: themeInfo.accent,
       strokeWidth: 1,
       lineStyle: 'dashed',
       borderRadius: 24,
-      text: '封面\n标签 + 主题风格',
+      text: tags.length > 0 ? tags.join(' · ') : '',
       textColor: themeInfo.textLight,
-      textFontSize: 24,
+      textFontSize: 20,
       zIndex: 4
-    },
+    })
+  }
+
+  return [
+    ...baseElements,
     {
       systemRole: 'cover-fixed',
       type: 'decoration',
@@ -284,6 +330,9 @@ function buildCoverPageElements(book, themeInfo) {
 }
 
 function buildThemePageElements(book, themeInfo, pageNumber) {
+  // 无风格：不添加任何主题装饰元素
+  if (book.theme === 'none' || !themeInfo || themeInfo.name === '无风格') return []
+
   const variant = Math.max(0, pageNumber - 2) % 3
   const pageLabel = `P.${String(Math.max(1, pageNumber)).padStart(2, '0')}`
   const shared = [

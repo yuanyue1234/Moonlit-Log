@@ -44,7 +44,10 @@
     </view>
   </view>
 
-  <view class="selection-toolbar" wx:if="{{selectedId && editorMode === 'edit'}}" style="{{toolbarTopStyle}}">
+  <view class="selection-toolbar" wx:if="{{selectedId && editorMode === 'edit'}}" style="{{toolbarStyle}}">
+    <view class="toolbar-drag-handle" bindtouchstart="onToolbarDragStart" catchtouchmove="onToolbarDragMove" bindtouchend="onToolbarDragEnd">
+      <image class="grip-icon" src="/assets/icons/grip-dots.svg" mode="aspectFit" />
+    </view>
     <view class="sel-btn" bindtap="duplicateSelected" data-tooltip="复制">
       <image class="ui-icon" src="/assets/icons/copy.svg" mode="aspectFit" />
     </view>
@@ -53,6 +56,9 @@
     </view>
     <view class="sel-btn" wx:if="{{selectedElement.type === 'text'}}" bindtap="openSelectedTextEditor" data-tooltip="编辑">
       <image class="ui-icon" src="/assets/icons/type.svg" mode="aspectFit" />
+    </view>
+    <view class="sel-btn" wx:if="{{selectedElement.type === 'decoration' && selectedElement.fillImage}}" bindtap="showFillImagePositionPanel" data-tooltip="移动图片">
+      <image class="ui-icon" src="/assets/icons/move.svg" mode="aspectFit" />
     </view>
     <view class="sel-btn {{selectedElement.locked ? 'active' : ''}}" bindtap="toggleSelectedLock" data-tooltip="{{selectedElement.locked ? '解锁' : '锁定'}}">
       <image class="ui-icon" src="{{selectedElement.locked ? '/assets/icons/unlock.svg' : '/assets/icons/lock.svg'}}" mode="aspectFit" />
@@ -87,7 +93,7 @@
     </view>
   </view>
 
-  <view class="page-dots-bar" wx:if="{{bookPages.length > 0}}">
+  <view class="page-dots-bar" wx:if="{{bookPages.length > 0 && editorMode !== 'preview'}}">
     <view class="page-nav-controls">
       <view class="page-nav-btn {{currentPageIndex <= 0 ? 'disabled' : ''}}" bindtap="onTapPrevPage" aria-label="上一页">
         <image class="ui-icon" src="/assets/icons/chevron-left.svg" mode="aspectFit" />
@@ -145,23 +151,39 @@
       <image class="ui-icon" src="/assets/icons/layout-template.svg" mode="aspectFit" />
       <text>模板</text>
     </view>
-    <view class="tool-btn" bindtap="insertNowComponent">
-      <text class="tool-icon-text">当下</text>
-      <text>当下</text>
-    </view>
   </view>
 
   <view class="panel {{showStickerPanel ? 'show' : ''}}" catchtap="stopPropagation">
     <view class="panel-header">
-      <view>
       <text class="panel-title">素材库</text>
-      <text class="panel-subtitle">你的收藏素材</text>
+      <view class="panel-search-bar">
+        <input class="panel-search-input" placeholder="搜索素材..." placeholder-class="search-placeholder" value="{{panelSearchKeyword}}" bindinput="onPanelSearchInput" />
       </view>
       <view class="panel-close" bindtap="toggleStickerPanel">
         <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
       </view>
     </view>
     <scroll-view scroll-y class="panel-scroll">
+      <!-- 分组 -->
+      <view class="panel-categories" wx:if="{{panelCategories.length > 0}}">
+        <scroll-view scroll-x class="category-scroll" enhanced show-scrollbar="{{false}}">
+          <view class="category-list">
+            <view class="category-tag {{panelActiveCategory === item.key ? 'active' : ''}}" wx:for="{{panelCategories}}" wx:key="key" bindtap="onPanelCategoryTap" data-key="{{item.key}}">{{item.name}}</view>
+          </view>
+        </scroll-view>
+      </view>
+      <!-- 当下组件 -->
+      <view class="widget-section" wx:if="{{panelActiveCategory === 'all'}}">
+        <view class="panel-eyebrow">当下</view>
+        <scroll-view scroll-x class="widget-scroll" enhanced show-scrollbar="{{false}}">
+          <view class="widget-list">
+            <view class="widget-card" wx:for="{{nowWidgets}}" wx:key="type" bindtap="onTapNowWidget" data-type="{{item.type}}">
+              <view class="widget-icon">{{item.icon}}</view>
+              <view class="widget-label">{{item.label}}</view>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
       <view class="sticker-grid" wx:if="{{stickers.length > 0}}">
         <view class="sticker-item user-sticker" wx:for="{{stickers}}" wx:key="id" bindtap="addUserSticker" data-id="{{item.id}}" data-src="{{item.src}}">
           <image src="{{item.src}}" mode="aspectFit" class="sticker-img" />
@@ -233,6 +255,14 @@
         <view class="rect-shape-item {{rectShape === 'ellipse' ? 'active' : ''}}" bindtap="onRectShape" data-shape="ellipse">
           <view class="shape-preview shape-ellipse"></view>
           <text>椭圆</text>
+        </view>
+        <view class="rect-shape-item {{rectShape === 'heart' ? 'active' : ''}}" bindtap="onRectShape" data-shape="heart">
+          <view class="shape-preview shape-heart">♥</view>
+          <text>心形</text>
+        </view>
+        <view class="rect-shape-item {{rectShape === 'star' ? 'active' : ''}}" bindtap="onRectShape" data-shape="star">
+          <view class="shape-preview shape-star">★</view>
+          <text>星形</text>
         </view>
       </view>
 
@@ -394,6 +424,32 @@
     </view>
   </view>
 
+  <!-- 填充图片拖拽调整位置 -->
+  <view class="fill-image-drag-modal {{showFillImagePanel ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="fidm-header">
+      <text class="fidm-title">拖动图片调整位置</text>
+      <view class="fidm-close" bindtap="closeFillImagePanel">
+        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+    </view>
+    <view class="fidm-body">
+      <canvas
+        type="2d"
+        id="fillImageDragCanvas"
+        class="fidm-canvas"
+        disable-scroll="{{true}}"
+        bindtouchstart="onFillImageDragStart"
+        bindtouchmove="onFillImageDragMove"
+        bindtouchend="onFillImageDragEnd"
+      />
+      <view class="fidm-hint" wx:if="{{!fillImageDragReady}}">加载中...</view>
+    </view>
+    <view class="fidm-footer">
+      <view class="fidm-btn fidm-btn-reset" bindtap="onFillImageDragReset">重置</view>
+      <view class="fidm-btn fidm-btn-confirm" bindtap="confirmFillImagePosition">完成</view>
+    </view>
+  </view>
+
   <view class="panel {{showTemplatePanel ? 'show' : ''}}" catchtap="stopPropagation">
     <view class="panel-header">
       <text class="panel-title">页面模板</text>
@@ -408,9 +464,15 @@
         </view>
       </view>
     </scroll-view>
-    <scroll-view scroll-y class="panel-scroll">
-      <view class="template-grid">
-        <view class="template-card" wx:for="{{templates}}" wx:key="id" bindtap="onTapTemplate" data-id="{{item.id}}">
+  <scroll-view scroll-y class="panel-scroll">
+    <view class="template-grid">
+      <view class="template-card template-clear-card" wx:if="{{activeTemplateCategory === '全部'}}" bindtap="onClearPage">
+        <view class="template-preview clear-preview">
+          <image class="clear-icon" src="/assets/icons/trash-2.svg" mode="aspectFit" />
+        </view>
+        <text class="template-name">一键清空页面</text>
+      </view>
+      <view class="template-card" wx:for="{{templates}}" wx:key="id" bindtap="onTapTemplate" data-id="{{item.id}}">
           <view class="template-preview" style="background: {{item.background || '#fdf9ef'}};">
             <view class="template-lines"></view>
           </view>
