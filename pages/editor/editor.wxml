@@ -200,45 +200,86 @@
     </scroll-view>
   </view>
 
-  <view class="panel draw-panel {{showDrawPanel ? 'show' : ''}}" catchtap="stopPropagation">
-    <view class="panel-header">
-      <text class="panel-title">绘制贴纸</text>
-      <view class="panel-close" bindtap="toggleDrawPanel">
-        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+  <view class="draw-workspace {{showDrawPanel ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="draw-topbar">
+      <view class="draw-top-btn" bindtap="toggleDrawPanel">
+        <image class="draw-tool-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+      <view class="draw-title-wrap">
+        <text class="draw-title">绘制贴纸</text>
+        <text class="draw-subtitle">{{drawTool === 'eraser' ? '橡皮模式' : '画笔模式'}} · {{drawWidth}}px</text>
+      </view>
+      <view class="draw-save-btn {{!drawHasContent ? 'disabled' : ''}}" bindtap="saveDrawSticker">完成</view>
+    </view>
+
+    <view class="draw-board">
+      <canvas
+        type="2d"
+        id="drawStickerCanvas"
+        class="draw-sticker-canvas"
+        disable-scroll="{{true}}"
+        bindtouchstart="onDrawStickerStart"
+        bindtouchmove="onDrawStickerMove"
+        bindtouchend="onDrawStickerEnd"
+      />
+      <view class="draw-empty-hint" wx:if="{{!drawHasContent}}">
+        <text>在这里画一枚自己的贴纸</text>
       </view>
     </view>
-    <view class="panel-body">
-      <view class="draw-canvas-card">
-        <canvas
-          type="2d"
-          id="drawStickerCanvas"
-          class="draw-sticker-canvas"
-          disable-scroll="{{true}}"
-          bindtouchstart="onDrawStickerStart"
-          bindtouchmove="onDrawStickerMove"
-          bindtouchend="onDrawStickerEnd"
-        />
-        <view class="draw-empty-hint" wx:if="{{!drawHasContent}}">在这里画一枚自己的贴纸</view>
+
+    <view class="draw-floating-actions">
+      <view class="draw-ghost-btn {{!drawCanUndo ? 'disabled' : ''}}" bindtap="undoDrawSticker">
+        <image class="draw-tool-icon" src="/assets/icons/undo.svg" mode="aspectFit" />
       </view>
+      <view class="draw-ghost-btn {{!drawCanRedo ? 'disabled' : ''}}" bindtap="redoDrawSticker">
+        <image class="draw-tool-icon" src="/assets/icons/redo.svg" mode="aspectFit" />
+      </view>
+    </view>
 
-      <text class="eyebrow">线条颜色</text>
-      <scroll-view scroll-x class="color-scroll" enhanced show-scrollbar="{{false}}">
-        <view class="color-list">
-          <view class="color-item {{drawColor === item ? 'active' : ''}}" wx:for="{{drawColors}}" wx:key="*this" style="background: {{item}};" bindtap="onDrawColor" data-color="{{item}}"></view>
+    <view class="draw-popover draw-sticker-popover {{showDrawStickerShelf ? 'show' : ''}}">
+      <scroll-view scroll-x class="draw-sticker-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="draw-sticker-list" wx:if="{{stickers.length > 0}}">
+          <view class="draw-sticker-pick" wx:for="{{stickers}}" wx:key="id" bindtap="addStickerToDrawCanvas" data-id="{{item.id}}">
+            <image src="{{item.src}}" mode="aspectFit" />
+          </view>
         </view>
+        <view class="draw-sticker-empty" wx:else>素材库暂无贴纸</view>
       </scroll-view>
+    </view>
 
-      <text class="eyebrow">线条粗细</text>
+    <view class="draw-popover draw-color-popover {{showDrawColorPanel ? 'show' : ''}}">
+      <view class="draw-popover-title">画笔颜色</view>
+      <view class="draw-color-list">
+        <view class="draw-color-item {{drawColor === item ? 'active' : ''}}" wx:for="{{drawColors}}" wx:key="*this" style="background: {{item}};" bindtap="onDrawColor" data-color="{{item}}"></view>
+      </view>
+    </view>
+
+    <view class="draw-popover draw-width-popover {{showDrawWidthPanel ? 'show' : ''}}">
+      <view class="draw-popover-title">画笔粗细</view>
       <view class="draw-width-list">
         <view class="draw-width-item {{drawWidth === item ? 'active' : ''}}" wx:for="{{drawWidths}}" wx:key="*this" bindtap="onDrawWidth" data-width="{{item}}">
           <view class="draw-width-preview" style="height: {{item}}rpx;"></view>
           <text>{{item}}</text>
         </view>
       </view>
+    </view>
 
-      <view class="draw-actions">
-        <view class="btn btn-secondary" bindtap="clearDrawSticker">清空</view>
-        <view class="btn btn-primary" bindtap="saveDrawSticker">保存为贴纸</view>
+    <view class="draw-bottom-toolbar">
+      <view class="draw-tool-tab {{showDrawStickerShelf ? 'active' : ''}}" bindtap="toggleDrawStickerShelf">
+        <image class="draw-tool-icon" src="/assets/icons/sticker.svg" mode="aspectFit" />
+        <text>选择贴纸</text>
+      </view>
+      <view class="draw-tool-tab {{showDrawColorPanel ? 'active' : ''}}" bindtap="toggleDrawColorPanel">
+        <view class="draw-current-color" style="background: {{drawColor}};"></view>
+        <text>画笔颜色</text>
+      </view>
+      <view class="draw-tool-tab {{showDrawWidthPanel ? 'active' : ''}}" bindtap="toggleDrawWidthPanel">
+        <view class="draw-current-width" style="height: {{drawWidth}}rpx;"></view>
+        <text>画笔粗细</text>
+      </view>
+      <view class="draw-tool-tab {{drawTool === 'eraser' ? 'active' : ''}}" bindtap="toggleDrawTool">
+        <image class="draw-tool-icon" src="{{drawTool === 'eraser' ? '/assets/icons/eraser.svg' : '/assets/icons/pencil-line.svg'}}" mode="aspectFit" />
+        <text>工具</text>
       </view>
     </view>
   </view>

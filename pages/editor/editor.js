@@ -111,7 +111,7 @@ Page({
     showTextPanel: false,
     showDrawPanel: false,
     showTemplatePanel: false,
-        stickers: [],
+    stickers: [],
     panelSearchKeyword: '',
     panelCategories: [],
     panelActiveCategory: 'all',
@@ -179,11 +179,17 @@ Page({
     rectFillColors: ['#FFFFFF', '#FFF8F0', '#FDE7EE', '#DFF3EC', '#E4F3FA', '#FFF1B8', '#F2E9FF', '#F5EDE3'],
     rectStrokeColor: '#A88F80',
     rectStrokeColors: ['#4B3930', '#7B665A', '#A88F80', '#D98EAA', '#A8DCC9', '#A9D7E8', '#F5D889', '#C7A7E8'],
+    showDrawStickerShelf: false,
+    showDrawColorPanel: false,
+    showDrawWidthPanel: false,
+    drawTool: 'pen',
     drawColor: '#4B3930',
     drawWidth: 8,
-    drawColors: ['#4B3930', '#D98EAA', '#A8DCC9', '#A9D7E8', '#F5D889', '#C7A7E8', '#FFFFFF'],
-    drawWidths: [4, 8, 12, 18],
+    drawColors: ['#4B3930', '#7B665A', '#D98EAA', '#EAB8C8', '#A8DCC9', '#A9D7E8', '#F5D889', '#C7A7E8', '#FFFFFF'],
+    drawWidths: [4, 8, 12, 18, 26],
     drawHasContent: false,
+    drawCanUndo: false,
+    drawCanRedo: false,
     // 边框面板
     showBorderPanel: false,
     // 填充图片位置调整面板
@@ -3595,6 +3601,11 @@ Page({
   },
   toggleDrawPanel() {
     const opening = !this.data.showDrawPanel
+    if (opening) {
+      this._drawStickerStrokes = []
+      this._drawStickerRedoStack = []
+      this._drawStickerCurrentStroke = null
+    }
     this.setData({
       showDrawPanel: opening,
       showBgPanel: false,
@@ -3603,7 +3614,14 @@ Page({
       showTemplatePanel: false,
       showRectPanel: false,
       showBorderPanel: false,
-      showFillImagePanel: false
+      showFillImagePanel: false,
+      showDrawStickerShelf: false,
+      showDrawColorPanel: false,
+      showDrawWidthPanel: false,
+      drawTool: 'pen',
+      drawHasContent: false,
+      drawCanUndo: false,
+      drawCanRedo: false
     }, () => {
       if (opening) this._initDrawStickerCanvas()
     })
@@ -3618,6 +3636,9 @@ Page({
       showDrawPanel: false,
       showBorderPanel: false,
       showFillImagePanel: false,
+      showDrawStickerShelf: false,
+      showDrawColorPanel: false,
+      showDrawWidthPanel: false,
       showSelectedMorePanel: false,
       selectedMoreActions: [],
       selectedMoreTitle: '',
@@ -3651,7 +3672,9 @@ Page({
         this._drawStickerSize = { width, height }
         this._drawStickerRect = { left: res[0].left || 0, top: res[0].top || 0 }
         this._drawStickerLast = null
-        this.setData({ drawHasContent: false })
+        this._drawStickerCurrentStroke = null
+        this._redrawDrawStickerCanvas()
+        this._updateDrawHistoryState()
       })
   },
 
@@ -3664,7 +3687,10 @@ Page({
   },
 
   onDrawColor(e) {
-    this.setData({ drawColor: e.currentTarget.dataset.color || '#4B3930' })
+    this.setData({
+      drawColor: e.currentTarget.dataset.color || '#4B3930',
+      drawTool: 'pen'
+    })
   },
 
   onDrawWidth(e) {
@@ -3673,36 +3699,233 @@ Page({
 
   onDrawStickerStart(e) {
     if (!this._drawStickerCtx || !e.touches || !e.touches[0]) return
-    this._drawStickerLast = this._getDrawPoint(e.touches[0])
+    const point = this._getDrawPoint(e.touches[0])
+    const stroke = {
+      type: 'stroke',
+      tool: this.data.drawTool,
+      color: this.data.drawColor,
+      width: this.data.drawWidth,
+      points: [point]
+    }
+    this._drawStickerCurrentStroke = stroke
+    this._drawStickerLast = point
+    this._drawDrawStrokeSegment(this._drawStickerCtx, point, point, stroke)
+    if (!this.data.drawHasContent) this.setData({ drawHasContent: true })
   },
 
   onDrawStickerMove(e) {
-    if (!this._drawStickerCtx || !this._drawStickerLast || !e.touches || !e.touches[0]) return
+    if (!this._drawStickerCtx || !this._drawStickerLast || !this._drawStickerCurrentStroke || !e.touches || !e.touches[0]) return
     const next = this._getDrawPoint(e.touches[0])
-    const ctx = this._drawStickerCtx
-    ctx.save()
-    ctx.strokeStyle = this.data.drawColor
-    ctx.lineWidth = this.data.drawWidth
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.beginPath()
-    ctx.moveTo(this._drawStickerLast.x, this._drawStickerLast.y)
-    ctx.lineTo(next.x, next.y)
-    ctx.stroke()
-    ctx.restore()
+    this._drawStickerCurrentStroke.points.push(next)
+    this._drawDrawStrokeSegment(this._drawStickerCtx, this._drawStickerLast, next, this._drawStickerCurrentStroke)
     this._drawStickerLast = next
     if (!this.data.drawHasContent) this.setData({ drawHasContent: true })
   },
 
   onDrawStickerEnd() {
+    if (this._drawStickerCurrentStroke) {
+      if (!this._drawStickerStrokes) this._drawStickerStrokes = []
+      this._drawStickerStrokes.push(this._drawStickerCurrentStroke)
+      this._drawStickerRedoStack = []
+      this._drawStickerCurrentStroke = null
+      this._updateDrawHistoryState()
+    }
     this._drawStickerLast = null
+  },
+
+  _drawDrawStrokeSegment(ctx, from, to, stroke) {
+    if (!ctx || !from || !to || !stroke) return
+    const isEraser = stroke.tool === 'eraser'
+    ctx.save()
+    ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over'
+    ctx.strokeStyle = isEraser ? 'rgba(0,0,0,1)' : (stroke.color || '#4B3930')
+    ctx.lineWidth = Math.max(1, isEraser ? (stroke.width || 8) * 2.1 : (stroke.width || 8))
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(from.x, from.y)
+    ctx.lineTo(to.x + 0.01, to.y + 0.01)
+    ctx.stroke()
+    ctx.restore()
+  },
+
+  _drawDrawStamp(ctx, stamp) {
+    if (!ctx || !stamp || !stamp.src || !this._drawStickerCanvas) return
+    const cached = imageCache.get(stamp.src)
+    if (cached && cached.loaded) {
+      ctx.save()
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.drawImage(cached.img, stamp.x, stamp.y, stamp.width, stamp.height)
+      ctx.restore()
+      return
+    }
+    loadImage(stamp.src, this._drawStickerCanvas).then(() => {
+      this._redrawDrawStickerCanvas()
+    }).catch(err => {
+      console.warn('绘制贴纸素材失败', err)
+    })
+  },
+
+  _redrawDrawStickerCanvas() {
+    if (!this._drawStickerCtx || !this._drawStickerSize) return
+    const ctx = this._drawStickerCtx
+    ctx.clearRect(0, 0, this._drawStickerSize.width, this._drawStickerSize.height)
+    const strokes = this._drawStickerStrokes || []
+    strokes.forEach(stroke => {
+      if (stroke.type === 'stamp') {
+        this._drawDrawStamp(ctx, stroke)
+        return
+      }
+      const points = stroke.points || []
+      if (points.length === 1) {
+        this._drawDrawStrokeSegment(ctx, points[0], points[0], stroke)
+        return
+      }
+      for (let i = 1; i < points.length; i++) {
+        this._drawDrawStrokeSegment(ctx, points[i - 1], points[i], stroke)
+      }
+    })
+  },
+
+  _updateDrawHistoryState() {
+    const strokes = this._drawStickerStrokes || []
+    const redo = this._drawStickerRedoStack || []
+    this.setData({
+      drawHasContent: strokes.length > 0,
+      drawCanUndo: strokes.length > 0,
+      drawCanRedo: redo.length > 0
+    })
+  },
+
+  _getDrawBounds() {
+    const size = this._drawStickerSize || { width: 600, height: 600 }
+    const strokes = (this._drawStickerStrokes || []).filter(item => item.tool !== 'eraser')
+    if (!strokes.length) return { x: 0, y: 0, width: size.width, height: size.height }
+    let minX = size.width
+    let minY = size.height
+    let maxX = 0
+    let maxY = 0
+    strokes.forEach(stroke => {
+      if (stroke.type === 'stamp') {
+        minX = Math.min(minX, stroke.x)
+        minY = Math.min(minY, stroke.y)
+        maxX = Math.max(maxX, stroke.x + stroke.width)
+        maxY = Math.max(maxY, stroke.y + stroke.height)
+        return
+      }
+      const pad = Math.max(18, (stroke.width || 8) * 2)
+      ;(stroke.points || []).forEach(point => {
+        minX = Math.min(minX, point.x - pad)
+        minY = Math.min(minY, point.y - pad)
+        maxX = Math.max(maxX, point.x + pad)
+        maxY = Math.max(maxY, point.y + pad)
+      })
+    })
+    if (minX > maxX || minY > maxY) return { x: 0, y: 0, width: size.width, height: size.height }
+    const x = Math.max(0, Math.floor(minX))
+    const y = Math.max(0, Math.floor(minY))
+    const width = Math.min(size.width - x, Math.ceil(maxX) - x)
+    const height = Math.min(size.height - y, Math.ceil(maxY) - y)
+    return {
+      x,
+      y,
+      width: Math.max(40, width),
+      height: Math.max(40, height)
+    }
   },
 
   clearDrawSticker() {
     if (!this._drawStickerCtx || !this._drawStickerSize) return
     this._drawStickerCtx.clearRect(0, 0, this._drawStickerSize.width, this._drawStickerSize.height)
     this._drawStickerLast = null
-    this.setData({ drawHasContent: false })
+    this._drawStickerCurrentStroke = null
+    this._drawStickerStrokes = []
+    this._drawStickerRedoStack = []
+    this._updateDrawHistoryState()
+  },
+
+  undoDrawSticker() {
+    if (!this._drawStickerStrokes || !this._drawStickerStrokes.length) return
+    if (!this._drawStickerRedoStack) this._drawStickerRedoStack = []
+    this._drawStickerRedoStack.push(this._drawStickerStrokes.pop())
+    this._redrawDrawStickerCanvas()
+    this._updateDrawHistoryState()
+  },
+
+  redoDrawSticker() {
+    if (!this._drawStickerRedoStack || !this._drawStickerRedoStack.length) return
+    if (!this._drawStickerStrokes) this._drawStickerStrokes = []
+    this._drawStickerStrokes.push(this._drawStickerRedoStack.pop())
+    this._redrawDrawStickerCanvas()
+    this._updateDrawHistoryState()
+  },
+
+  toggleDrawStickerShelf() {
+    this.setData({
+      showDrawStickerShelf: !this.data.showDrawStickerShelf,
+      showDrawColorPanel: false,
+      showDrawWidthPanel: false
+    })
+  },
+
+  toggleDrawColorPanel() {
+    this.setData({
+      showDrawColorPanel: !this.data.showDrawColorPanel,
+      showDrawStickerShelf: false,
+      showDrawWidthPanel: false
+    })
+  },
+
+  toggleDrawWidthPanel() {
+    this.setData({
+      showDrawWidthPanel: !this.data.showDrawWidthPanel,
+      showDrawStickerShelf: false,
+      showDrawColorPanel: false
+    })
+  },
+
+  toggleDrawTool() {
+    this.setData({
+      drawTool: this.data.drawTool === 'eraser' ? 'pen' : 'eraser',
+      showDrawStickerShelf: false,
+      showDrawColorPanel: false,
+      showDrawWidthPanel: false
+    })
+  },
+
+  addStickerToDrawCanvas(e) {
+    const id = e.currentTarget.dataset.id
+    const sticker = (this.data.stickers || []).find(item => item.id === id)
+    if (!sticker || !sticker.src || !this._drawStickerCanvas || !this._drawStickerCtx || !this._drawStickerSize) return
+    loadImage(sticker.src, this._drawStickerCanvas).then(entry => {
+      const size = this._drawStickerSize
+      const maxW = size.width * 0.28
+      const maxH = size.height * 0.24
+      const ratio = entry.width && entry.height ? entry.width / entry.height : 1
+      let width = maxW
+      let height = width / ratio
+      if (height > maxH) {
+        height = maxH
+        width = height * ratio
+      }
+      const stamp = {
+        type: 'stamp',
+        src: sticker.src,
+        x: (size.width - width) / 2,
+        y: (size.height - height) / 2,
+        width,
+        height
+      }
+      if (!this._drawStickerStrokes) this._drawStickerStrokes = []
+      this._drawStickerStrokes.push(stamp)
+      this._drawStickerRedoStack = []
+      this._drawDrawStamp(this._drawStickerCtx, stamp)
+      this.setData({ showDrawStickerShelf: false })
+      this._updateDrawHistoryState()
+    }).catch(err => {
+      console.error('选择贴纸失败', err)
+      wx.showToast({ title: '贴纸加载失败', icon: 'none' })
+    })
   },
 
   saveDrawSticker() {
@@ -3710,14 +3933,20 @@ Page({
       wx.showToast({ title: '先画一点内容', icon: 'none' })
       return
     }
+    const bounds = this._getDrawBounds()
 
     wx.canvasToTempFilePath({
       canvas: this._drawStickerCanvas,
       fileType: 'png',
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      destWidth: bounds.width,
+      destHeight: bounds.height,
       success: (res) => {
         fileUtil.persistFile(res.tempFilePath, 'draw_' + Date.now()).then(savedSrc => {
           storage.addGroup('手绘')
-          const drawSize = this._drawStickerSize || { width: 600, height: 360 }
           const sticker = storage.saveSticker({
             src: savedSrc,
             category: 'draw',
@@ -3726,14 +3955,19 @@ Page({
             effect: 'none',
             group: '手绘',
             kind: 'drawn',
-            originalWidth: drawSize.width,
-            originalHeight: drawSize.height
+            originalWidth: bounds.width,
+            originalHeight: bounds.height
           })
           this.setData({
             stickers: storage.getStickers(),
             panelCategories: this._loadPanelCategories(),
-            showDrawPanel: false
+            showDrawPanel: false,
+            showDrawStickerShelf: false,
+            showDrawColorPanel: false,
+            showDrawWidthPanel: false
           })
+          this._drawStickerStrokes = []
+          this._drawStickerRedoStack = []
           this._addStickerAssetToCanvas(sticker)
           wx.showToast({ title: '已保存为贴纸', icon: 'none' })
         }).catch(err => {
