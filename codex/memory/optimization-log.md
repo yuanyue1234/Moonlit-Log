@@ -121,3 +121,25 @@
 ### Git 提交记录
 - `6dcb021` - `fix: 修复编辑页线条风与全屏手绘工作台`，已推送到 `origin/dev`。
 - `cd9b347` - `docs: 记录编辑页编译验证结果`，已推送到 `origin/dev`。
+
+## 2026-06-17 dev 工具栏 hover/触摸态补强
+
+### 已完成
+- [x] 为编辑页顶部图标按钮、模式切换、选中工具栏、页码按钮、浮动工具栏、选中更多菜单、素材卡片、弹层关闭按钮和全屏手绘工具按钮增加 `hover-class="soft-hover"`。
+- [x] 为画笔颜色圆点增加 `hover-class="soft-hover-scale"`，让颜色选择反馈更明确。
+- [x] 在 `pages/editor/editor.wxss` 末尾增加 `.soft-hover` / `.soft-hover-scale`：统一粉色 hover 背景、玫瑰色文字和图标、轻微放大；激活态 hover 仍保持白色图标和文字。
+
+### 验证
+- [x] `node --check`：所有 JS 文件通过。
+- [x] 微信开发者工具内置 `wcc`：所有 WXML 文件通过编译。
+- [x] 微信开发者工具内置 `wcsc -lc`：所有 WXSS 文件通过编译。
+- [x] 编辑器静态图标资源检查：43 个 `/assets/icons/*.svg` 或 `/images/*.png` 引用均存在。
+- [x] SVG 图标检查：`assets/icons` 中已无 `currentColor`。
+- [x] `git diff --check`：仅 LF/CRLF 换行提示，无尾随空格或 diff 格式错误。
+
+### 待完成
+- [ ] 微信开发者工具 GUI 或真机里确认 hover/触摸态是否与参考图一致。
+- [ ] 手绘工具栏在真机上确认弹层不遮挡绘画区域、撤回/重做按钮位置顺手。
+
+### Git 提交记录
+- (待提交)

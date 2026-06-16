@@ -3204,3 +3204,53 @@
     linear-gradient(0deg, rgba(168, 143, 128, 0.08) 1rpx, transparent 1rpx) 0 0 / 32rpx 32rpx,
     #fff7ed;
 }
+
+.soft-hover {
+  background: #fdeaf1 !important;
+  border-color: #eab8c8 !important;
+  color: #b96e8b !important;
+  box-shadow:
+    0 10rpx 24rpx rgba(217, 142, 170, 0.18),
+    inset 0 0 0 1rpx rgba(255, 253, 248, 0.82) !important;
+}
+
+.soft-hover .ui-icon,
+.soft-hover .selected-more-icon,
+.soft-hover .draw-tool-icon {
+  filter: invert(56%) sepia(19%) saturate(1117%) hue-rotate(287deg) brightness(92%) contrast(90%) !important;
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+.soft-hover text {
+  color: #b96e8b !important;
+}
+
+.active.soft-hover,
+.draw-save-btn.soft-hover,
+.btn-primary.soft-hover {
+  background: #d98eaa !important;
+  border-color: #d98eaa !important;
+  color: #fffdf8 !important;
+}
+
+.active.soft-hover text,
+.draw-save-btn.soft-hover,
+.btn-primary.soft-hover {
+  color: #fffdf8 !important;
+}
+
+.active.soft-hover .ui-icon,
+.active.soft-hover .draw-tool-icon,
+.draw-save-btn.soft-hover .draw-tool-icon,
+.btn-primary.soft-hover .ui-icon {
+  filter: brightness(0) invert(1) !important;
+}
+
+.soft-hover-scale {
+  transform: scale(1.08);
+  border-color: #d98eaa !important;
+  box-shadow:
+    0 0 0 6rpx rgba(217, 142, 170, 0.16),
+    0 10rpx 22rpx rgba(122, 86, 58, 0.14) !important;
+}
