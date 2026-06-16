@@ -27,3 +27,41 @@
 - 当前分支：`feature/editor-enhancements`。
 - 本轮未提交。
 - 工作区存在其他程序员/历史改动：包括多个页面和工具文件修改、一个本地字体文件删除、`.workbuddy/memory/MEMORY.md` 未跟踪。
+
+## 2026-06-10 知识库 QA 与作者文档整理
+
+### 已完成
+- [x] 阅读项目资料：`设计.md`、产品升级方案、最小成功案例技术文档、近期改动、v1.0.1 更新日志、备案说明、既有 memory。
+- [x] 对照当前页面与工具实现：首页、编辑器、素材库、保存收藏物、主题系统、模板系统、本地存储。
+- [x] 新增 `docs/知识库QA问题整理.md`，整理 30 条可用于知识库 QA 的用户疑问与回答。
+- [x] 新增 `docs/关于作者.md`，整理作者小晴、创作初衷、审美方向、产品原则和 QA 关键词。
+- [x] 在 `codex/memory/project-memory.md` 记录本轮知识库整理结果和当前口径。
+
+### 待完成
+- [ ] 若后续重新启用 MiMo/remove.bg，需要同步更新 QA 文档中的「当前实现」和「隐私/上传」口径。
+- [ ] 若产品正式名称从「月照雪」切换为「我的手帐」，需要检查备案说明、项目配置、页面标题是否完全一致。
+- [ ] AI QA 对接前建议把问答按「基础定位/编辑器/素材库/导出隐私」切分入库，并设置当前实现优先级。
+
+### Git 提交记录
+- (待提交)
+
+## 2026-06-16 v1.0.1 正式发布、分支整理与计划性更新调研
+
+### 已完成
+- [x] 读取项目根目录 `memory/optimization-log.md` 与 `codex/memory/*`，确认当前项目记忆、待验收事项和历史优化记录。
+- [x] 确认仓库远端为 `git@github.com:yuanyue1234/Moonlit-Log.git`，当前本地 `master` 跟踪 `origin/main`。
+- [x] 确认旧本地分支 `feature/editor-enhancements` 已并入当前主线，无 `master..feature/editor-enhancements` 未合并提交。
+- [x] 调研同类手帐/日记/网页与小程序方向：时光手帐、微手帐、Goodnotes、Zinnia、Day One、Journey、Diarium、Grid Diary/格志日记、Apple Journal、LemonJournal、Canva。
+- [x] 新增 `docs/计划性更新路线图.md`，整理 v1.0.2-v1.5 推荐节奏和待决策更新菜单。
+- [x] 更新 `codex/memory/project-memory.md`，记录本次发布目标、分支口径和后续计划方向。
+
+### 待完成
+- [ ] 将本地 `master` 规范为 `main`，创建并推送 `dev` 分支。
+- [ ] 清理旧本地分支 `feature/editor-enhancements`。
+- [ ] 提交本轮文档与 memory 更新，创建 `v1.0.1` tag 并推送到 GitHub。
+- [ ] 因本机未安装 GitHub CLI `gh`，本轮不创建 GitHub PR；如后续需要 PR，需要先安装并登录 `gh`。
+- [ ] v1.0.2 前仍需在微信开发者工具中做完整手动回归。
+
+### Git 提交记录
+- 计划提交：`v1.0.1: 正式发布手帐文档与更新路线图`
+- 计划标签：`v1.0.1`
