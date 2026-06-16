@@ -144,14 +144,70 @@ function drawImageElement(ctx, el, img) {
   var dw = el.width || 200
   var dh = el.height || 200
   var rot = el.rotation || 0
+  var effect = el.effect || 'none'
 
   if (rot !== 0) {
     ctx.translate(dx, dy)
     ctx.rotate(rot * Math.PI / 180)
-    ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
+    if (effect === 'photo-frame') {
+      drawPhotoFrameImage(ctx, img, -dw / 2, -dh / 2, dw, dh)
+    } else {
+      ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
+    }
   } else {
-    ctx.drawImage(img, dx - dw / 2, dy - dh / 2, dw, dh)
+    if (effect === 'photo-frame') {
+      drawPhotoFrameImage(ctx, img, dx - dw / 2, dy - dh / 2, dw, dh)
+    } else {
+      ctx.drawImage(img, dx - dw / 2, dy - dh / 2, dw, dh)
+    }
   }
+  ctx.restore()
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  r = Math.max(0, Math.min(r || 0, w / 2, h / 2))
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.arcTo(x + w, y, x + w, y + r, r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
+  ctx.lineTo(x + r, y + h)
+  ctx.arcTo(x, y + h, x, y + h - r, r)
+  ctx.lineTo(x, y + r)
+  ctx.arcTo(x, y, x + r, y, r)
+  ctx.closePath()
+}
+
+function drawPhotoFrameImage(ctx, img, x, y, w, h) {
+  var pad = Math.max(8, Math.min(w, h) * 0.07)
+  var bottom = Math.max(18, Math.min(w, h) * 0.16)
+  var cardX = x - pad
+  var cardY = y - pad
+  var cardW = w + pad * 2
+  var cardH = h + pad + bottom
+  var radius = Math.max(10, pad * 1.1)
+
+  ctx.save()
+  ctx.shadowColor = 'rgba(122,86,58,0.16)'
+  ctx.shadowBlur = Math.max(10, pad * 1.6)
+  ctx.shadowOffsetY = Math.max(6, pad * 0.8)
+  ctx.fillStyle = '#fffdf8'
+  roundRectPath(ctx, cardX, cardY, cardW, cardH, radius)
+  ctx.fill()
+  ctx.restore()
+
+  ctx.save()
+  ctx.strokeStyle = 'rgba(168,143,128,0.35)'
+  ctx.lineWidth = Math.max(1, pad * 0.08)
+  roundRectPath(ctx, cardX, cardY, cardW, cardH, radius)
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.save()
+  roundRectPath(ctx, x, y, w, h, Math.max(8, pad * 0.6))
+  ctx.clip()
+  ctx.drawImage(img, x, y, w, h)
   ctx.restore()
 }
 

@@ -283,6 +283,15 @@
 .masonry-item.effect-shadow {
   filter: drop-shadow(0 12rpx 30rpx rgba(0,0,0,0.36));
 }
+.masonry-img.effect-photo-frame,
+.preview-image.effect-photo-frame {
+  padding: 12rpx 12rpx 34rpx;
+  background: #fffdf8;
+  border: 1rpx solid rgba(168, 143, 128, 0.3);
+  border-radius: 14rpx;
+  box-shadow: 0 14rpx 30rpx rgba(122, 86, 58, 0.16);
+  box-sizing: border-box;
+}
 
 /* 全屏预览 */
 .preview-mask {
@@ -439,4 +448,103 @@
   padding: 20rpx;
   color: #8b949e;
   font-size: 26rpx;
+}
+
+/* v1.1 soft line-art journal redesign */
+.page {
+  background:
+    radial-gradient(circle at 18% 10%, rgba(234, 184, 200, 0.24), transparent 28%),
+    radial-gradient(circle at 88% 18%, rgba(169, 215, 232, 0.2), transparent 24%),
+    #fff7ed;
+  color: #4b3930;
+  font-family: 'LXGW Yozai', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.page-title,
+.preview-title,
+.picker-title,
+.empty-text,
+.picker-name {
+  color: #4b3930;
+}
+
+.subtitle,
+.category-title,
+.empty-hint,
+.preview-meta,
+.item-tag,
+.picker-close,
+.search-placeholder {
+  color: #9a8678;
+}
+
+.search-input,
+.category-tag,
+.category-add-btn,
+.masonry-item,
+.preview-info,
+.tag-input,
+.preview-btn,
+.book-picker,
+.picker-item {
+  background: #fffdf8;
+  border-color: #eadccf;
+  color: #4b3930;
+  box-shadow: 0 8rpx 24rpx rgba(122, 86, 58, 0.1);
+}
+
+.search-input {
+  background: #fffaf2;
+  border-radius: 28rpx;
+}
+
+.category-tag.active,
+.category-add-btn:active,
+.btn-active,
+.tag-confirm,
+.masonry-badge,
+.preview-btn.primary {
+  background: #d98eaa;
+  border-color: #d98eaa;
+  color: #fffdf8;
+}
+
+.category-add-btn,
+.item-group,
+.preview-tag,
+.preview-group {
+  background: #fdeaf1;
+  color: #c87596;
+  border-color: #eab8c8;
+}
+
+.masonry-item:active,
+.masonry-item.selected {
+  outline-color: #d98eaa;
+}
+
+.quick-btn {
+  background: rgba(255, 253, 248, 0.9);
+  border-color: #eadccf;
+  color: #4b3930;
+}
+
+.quick-btn:active {
+  background: #fdeaf1;
+  border-color: #d98eaa;
+}
+
+.preview-mask {
+  background: rgba(75, 57, 48, 0.28);
+}
+
+.edit-pill {
+  background: #fffaf2;
+  color: #7b665a;
+}
+
+.edit-pill.danger,
+.quick-btn.danger:active {
+  background: #e58a8a;
+  color: #fffdf8;
 }

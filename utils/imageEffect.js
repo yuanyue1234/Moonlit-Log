@@ -166,6 +166,66 @@ function drawMask(ctx, mask, x, y) {
   ctx.drawImage(mask.canvas, x - mask.margin, y - mask.margin, mask.width, mask.height)
 }
 
+function drawRoundRect(ctx, x, y, width, height, radius) {
+  const r = Math.max(0, Math.min(radius || 0, width / 2, height / 2))
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + width - r, y)
+  ctx.arcTo(x + width, y, x + width, y + r, r)
+  ctx.lineTo(x + width, y + height - r)
+  ctx.arcTo(x + width, y + height, x + width - r, y + height, r)
+  ctx.lineTo(x + r, y + height)
+  ctx.arcTo(x, y + height, x, y + height - r, r)
+  ctx.lineTo(x, y + r)
+  ctx.arcTo(x, y, x + r, y, r)
+  ctx.closePath()
+}
+
+function drawPhotoFrame(ctx, image, x, y, width, height) {
+  const pad = Math.max(8, Math.min(width, height) * 0.07)
+  const bottom = Math.max(18, Math.min(width, height) * 0.16)
+  const cardX = x - pad
+  const cardY = y - pad
+  const cardW = width + pad * 2
+  const cardH = height + pad + bottom
+  const radius = Math.max(10, pad * 1.1)
+
+  ctx.save()
+  ctx.shadowColor = 'rgba(122,86,58,0.18)'
+  ctx.shadowBlur = Math.max(10, pad * 1.6)
+  ctx.shadowOffsetY = Math.max(6, pad * 0.8)
+  ctx.fillStyle = '#fffdf8'
+  drawRoundRect(ctx, cardX, cardY, cardW, cardH, radius)
+  ctx.fill()
+  ctx.restore()
+
+  ctx.save()
+  ctx.strokeStyle = 'rgba(168,143,128,0.35)'
+  ctx.lineWidth = Math.max(1, pad * 0.08)
+  drawRoundRect(ctx, cardX, cardY, cardW, cardH, radius)
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.save()
+  ctx.fillStyle = 'rgba(216,182,165,0.28)'
+  drawRoundRect(ctx, x - pad * 0.4, y - pad * 1.45, width * 0.35, pad * 1.3, pad * 0.35)
+  ctx.fill()
+  ctx.restore()
+
+  ctx.save()
+  drawRoundRect(ctx, x, y, width, height, Math.max(8, pad * 0.6))
+  ctx.clip()
+  ctx.drawImage(image, x, y, width, height)
+  ctx.restore()
+
+  ctx.save()
+  ctx.strokeStyle = 'rgba(168,143,128,0.22)'
+  ctx.lineWidth = Math.max(1, pad * 0.08)
+  drawRoundRect(ctx, x, y, width, height, Math.max(8, pad * 0.6))
+  ctx.stroke()
+  ctx.restore()
+}
+
 function drawSubjectShadow(ctx, src, image, x, y, width, height, options = {}) {
   const mask = buildAlphaMask(src, image, width, height, {
     color: options.color || 'rgba(0,0,0,0.45)',
@@ -211,6 +271,11 @@ function drawOutline(ctx, src, image, x, y, width, height, options) {
 
 function drawImageEffect(ctx, src, image, x, y, width, height, effect) {
   if (!effect || effect === 'none') return false
+
+  if (effect === 'photo-frame') {
+    drawPhotoFrame(ctx, image, x, y, width, height)
+    return true
+  }
 
   if (effect === 'shadow') {
     drawSubjectShadow(ctx, src, image, x, y, width, height, {

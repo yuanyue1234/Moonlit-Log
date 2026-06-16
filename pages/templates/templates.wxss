@@ -47,3 +47,51 @@
 .template-info { padding: 20rpx; }
 .template-name { font-size: 28rpx; font-weight: 600; color: #f2f2f2; display: block; margin-bottom: 4rpx; }
 .template-desc { font-size: 20rpx; color: #8b949e; }
+
+/* v1.1 soft line-art journal redesign */
+.page {
+  background:
+    radial-gradient(circle at 14% 8%, rgba(234, 184, 200, 0.24), transparent 30%),
+    radial-gradient(circle at 88% 20%, rgba(245, 216, 137, 0.22), transparent 25%),
+    #fff7ed;
+  color: #4b3930;
+  font-family: 'LXGW Yozai', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.page-title,
+.template-name {
+  color: #4b3930;
+}
+
+.subtitle,
+.template-desc,
+.category-tag {
+  color: #9a8678;
+}
+
+.category-tag,
+.template-card {
+  background: #fffdf8;
+  border-color: #eadccf;
+  box-shadow: 0 10rpx 28rpx rgba(122, 86, 58, 0.1);
+}
+
+.category-tag.active,
+.template-card:active {
+  background: #fdeaf1;
+  border-color: #d98eaa;
+  color: #c87596;
+}
+
+.template-preview {
+  border-color: rgba(168, 143, 128, 0.3);
+  box-shadow: 0 10rpx 22rpx rgba(122, 86, 58, 0.12);
+}
+
+.template-paper-icon {
+  border-color: rgba(75, 57, 48, 0.42);
+}
+
+.paper-line {
+  background: rgba(75, 57, 48, 0.42);
+}

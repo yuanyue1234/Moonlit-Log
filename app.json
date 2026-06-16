@@ -7,17 +7,17 @@
     "pages/templates/templates"
   ],
   "window": {
-    "navigationBarBackgroundColor": "#1a1a1a",
+    "navigationBarBackgroundColor": "#FFF7ED",
     "navigationBarTitleText": "我的手帐",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#1a1a1a",
-    "backgroundTextStyle": "light"
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FFF7ED",
+    "backgroundTextStyle": "dark"
   },
   "tabBar": {
-    "color": "#8b949e",
-    "selectedColor": "#00d992",
-    "backgroundColor": "#1a1a1a",
-    "borderStyle": "black",
+    "color": "#9A8678",
+    "selectedColor": "#C87596",
+    "backgroundColor": "#FFFDF8",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",

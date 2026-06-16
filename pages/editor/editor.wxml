@@ -127,6 +127,10 @@
       <image class="ui-icon" src="/assets/icons/sticker.svg" mode="aspectFit" />
       <text>素材</text>
     </view>
+    <view class="tool-btn {{showDrawPanel ? 'active' : ''}}" bindtap="toggleDrawPanel">
+      <image class="ui-icon" src="/assets/icons/pencil-line.svg" mode="aspectFit" />
+      <text>手绘</text>
+    </view>
     <view class="tool-btn {{showTextPanel ? 'active' : ''}}" bindtap="toggleTextPanel">
       <image class="ui-icon" src="/assets/icons/type.svg" mode="aspectFit" />
       <text>文字</text>
@@ -194,6 +198,49 @@
         <text class="empty-hint">从“提取”页生成素材，或直接添加图片到画布。</text>
       </view>
     </scroll-view>
+  </view>
+
+  <view class="panel draw-panel {{showDrawPanel ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="panel-header">
+      <text class="panel-title">绘制贴纸</text>
+      <view class="panel-close" bindtap="toggleDrawPanel">
+        <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
+      </view>
+    </view>
+    <view class="panel-body">
+      <view class="draw-canvas-card">
+        <canvas
+          type="2d"
+          id="drawStickerCanvas"
+          class="draw-sticker-canvas"
+          disable-scroll="{{true}}"
+          bindtouchstart="onDrawStickerStart"
+          bindtouchmove="onDrawStickerMove"
+          bindtouchend="onDrawStickerEnd"
+        />
+        <view class="draw-empty-hint" wx:if="{{!drawHasContent}}">在这里画一枚自己的贴纸</view>
+      </view>
+
+      <text class="eyebrow">线条颜色</text>
+      <scroll-view scroll-x class="color-scroll" enhanced show-scrollbar="{{false}}">
+        <view class="color-list">
+          <view class="color-item {{drawColor === item ? 'active' : ''}}" wx:for="{{drawColors}}" wx:key="*this" style="background: {{item}};" bindtap="onDrawColor" data-color="{{item}}"></view>
+        </view>
+      </scroll-view>
+
+      <text class="eyebrow">线条粗细</text>
+      <view class="draw-width-list">
+        <view class="draw-width-item {{drawWidth === item ? 'active' : ''}}" wx:for="{{drawWidths}}" wx:key="*this" bindtap="onDrawWidth" data-width="{{item}}">
+          <view class="draw-width-preview" style="height: {{item}}rpx;"></view>
+          <text>{{item}}</text>
+        </view>
+      </view>
+
+      <view class="draw-actions">
+        <view class="btn btn-secondary" bindtap="clearDrawSticker">清空</view>
+        <view class="btn btn-primary" bindtap="saveDrawSticker">保存为贴纸</view>
+      </view>
+    </view>
   </view>
 
   <view class="panel {{showTextPanel ? 'show' : ''}}" catchtap="stopPropagation" style="{{showTextPanel && keyboardHeight > 0 ? 'padding-bottom:' + keyboardHeight + 'px;' : ''}}">
@@ -482,7 +529,7 @@
     </scroll-view>
   </view>
 
-  <view class="panel-mask {{showBgPanel || showStickerPanel || showTextPanel || showTemplatePanel || showRectPanel || showBorderPanel ? 'show' : ''}}" bindtap="closeAllPanels"></view>
+  <view class="panel-mask {{showBgPanel || showStickerPanel || showTextPanel || showTemplatePanel || showRectPanel || showBorderPanel || showDrawPanel ? 'show' : ''}}" bindtap="closeAllPanels"></view>
 
   <!-- 调色盘弹窗 -->
   <view class="color-picker-mask {{showColorPicker ? 'show' : ''}}" bindtap="closeColorPicker">

@@ -1,38 +1,42 @@
-/* app.wxss - 暗色主题 - 借鉴 Voltagent 设计系统 */
+/* app.wxss - 柔和线条手帐主题 */
 
 /* CSS 变量 - 暗色主题 */
 page {
   /* Brand & Accent */
-  --color-primary: #00d992;
-  --color-primary-soft: #2fd6a1;
-  --color-primary-deep: #10b981;
-  --color-primary-glow: rgba(0, 217, 146, 0.15);
+  --color-primary: #D98EAA;
+  --color-primary-soft: #EAB8C8;
+  --color-primary-deep: #B96E8B;
+  --color-primary-glow: rgba(217, 142, 170, 0.18);
+  --color-mint: #A8DCC9;
+  --color-sky: #A9D7E8;
+  --color-butter: #F5D889;
 
   /* Surface */
-  --color-canvas: #101010;
-  --color-canvas-soft: #1a1a1a;
-  --color-hairline: #3d3a39;
-  --color-hairline-soft: #b8b3b0;
+  --color-canvas: #FFF7ED;
+  --color-canvas-soft: #FFFDF8;
+  --color-hairline: #E7D8CB;
+  --color-hairline-soft: #D5BFAF;
+  --color-line: #A88F80;
 
   /* Text */
-  --color-ink: #f2f2f2;
-  --color-ink-strong: #ffffff;
-  --color-body: #bdbdbd;
-  --color-mute: #8b949e;
+  --color-ink: #4B3930;
+  --color-ink-strong: #2F211C;
+  --color-body: #7B665A;
+  --color-mute: #9A8678;
 
   /* Semantic */
-  --color-success: #00d992;
-  --color-warning: #ffb84d;
-  --color-danger: #ff6b6b;
+  --color-success: #7BBFA6;
+  --color-warning: #E5B75F;
+  --color-danger: #E58A8A;
 
   /* Legacy compat */
-  --color-bg: #101010;
-  --color-bg-card: #1a1a1a;
-  --color-text: #f2f2f2;
-  --color-text-light: #bdbdbd;
-  --color-text-muted: #8b949e;
-  --color-border: #3d3a39;
-  --color-shadow: rgba(0, 0, 0, 0.3);
+  --color-bg: #FFF7ED;
+  --color-bg-card: #FFFDF8;
+  --color-text: #4B3930;
+  --color-text-light: #7B665A;
+  --color-text-muted: #9A8678;
+  --color-border: #E7D8CB;
+  --color-shadow: rgba(122, 86, 58, 0.14);
 
   /* Typography */
   --font-xs: 22rpx;
@@ -50,7 +54,7 @@ page {
   --radius-lg: 24rpx;
   --radius-xl: 32rpx;
 
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  font-family: 'LXGW Yozai', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   background-color: var(--color-canvas);
   color: var(--color-ink);
   font-size: var(--font-md);
@@ -65,9 +69,10 @@ page {
 
 .card {
   background: var(--color-canvas-soft);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: 32rpx;
-  border: 1rpx solid var(--color-hairline);
+  border: 2rpx solid var(--color-hairline);
+  box-shadow: 0 12rpx 32rpx var(--color-shadow);
 }
 
 .btn {
@@ -89,7 +94,7 @@ page {
 
 .btn-primary {
   background: var(--color-primary);
-  color: #101010;
+  color: #fffdf8;
   height: 88rpx;
   font-size: var(--font-lg);
   box-shadow: 0 0 20rpx var(--color-primary-glow);
@@ -194,7 +199,7 @@ page {
 }
 
 .empty-icon {
-  font-size: 120rpx;
+  font-size: 96rpx;
   margin-bottom: 32rpx;
 }
 
@@ -260,7 +265,7 @@ page {
 /* 分割线 - Voltagent 虚线风格 */
 .dashed-divider {
   border: none;
-  border-top: 1rpx dashed rgba(79, 93, 117, 0.4);
+  border-top: 2rpx dashed rgba(168, 143, 128, 0.35);
   margin: 32rpx 0;
 }
 
@@ -269,7 +274,7 @@ page {
   display: inline-block;
   background: var(--color-canvas-soft);
   color: var(--color-ink);
-  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-family: 'LXGW Yozai', 'PingFang SC', sans-serif;
   font-size: 22rpx;
   padding: 4rpx 12rpx;
   border-radius: var(--radius-xs);

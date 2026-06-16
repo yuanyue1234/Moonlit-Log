@@ -28,6 +28,7 @@ Page({
     postProcessEffect: 'none',
     postProcessOptions: [
       { key: 'none', name: '无效果', desc: '保留原样', icon: '/assets/icons/x.svg' },
+      { key: 'photo-frame', name: '相框', desc: '柔和照片边框', icon: '/assets/icons/photo-frame.svg' },
       { key: 'white-border', name: '白边', desc: '主体轮廓描边', icon: '/assets/icons/sticker.svg' },
       { key: 'paper', name: '纸贴', desc: '贴合主体轮廓的纸边', icon: '/assets/icons/file-text.svg' },
       { key: 'shadow', name: '阴影', desc: '主体轮廓阴影', icon: '/assets/icons/layers.svg' }

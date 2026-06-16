@@ -1780,6 +1780,272 @@
   color: #1b6f4a;
 }
 
+/* ===== v1.1 soft line-art journal redesign ===== */
+.editor-page {
+  background: #fff7ed;
+  color: #4b3930;
+  font-family: 'LXGW Yozai', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.top-bar,
+.page-dots-bar {
+  background: rgba(255, 253, 248, 0.94);
+  border-color: #eadccf;
+  box-shadow: 0 10rpx 28rpx rgba(122, 86, 58, 0.08);
+}
+
+.page-name,
+.panel-title,
+.template-name,
+.empty-title,
+.font-item,
+.mode-toggle text {
+  color: #4b3930;
+}
+
+.page-hint,
+.panel-subtitle,
+.empty-hint,
+.tab-item,
+.eyebrow {
+  color: #9a8678;
+}
+
+.icon-btn,
+.mode-toggle,
+.panel-close,
+.page-nav-btn,
+.sel-btn,
+.font-item,
+.size-item,
+.pattern-item,
+.rect-shape-item,
+.rect-line-item,
+.rect-width-item,
+.border-width-item,
+.border-style-item,
+.sticker-item {
+  background: #fffdf8;
+  border-color: #eadccf;
+  color: #4b3930;
+  box-shadow: 0 6rpx 18rpx rgba(122, 86, 58, 0.08);
+}
+
+.ui-icon,
+.sel-btn .ui-icon,
+.grip-icon {
+  filter: invert(25%) sepia(16%) saturate(824%) hue-rotate(341deg) brightness(88%) contrast(86%);
+}
+
+.icon-btn:active,
+.mode-toggle:active,
+.page-nav-btn:active,
+.sel-btn:active {
+  background: #fdeaf1;
+  border-color: #eab8c8;
+}
+
+.mode-toggle.active,
+.floating-tool-dock .tool-btn.active,
+.page-dot.active,
+.font-item.active,
+.size-item.active,
+.pattern-item.active,
+.rect-shape-item.active,
+.rect-line-item.active,
+.rect-width-item.active,
+.border-width-item.active,
+.border-style-item.active,
+.btn-primary {
+  background: #d98eaa;
+  border-color: #d98eaa;
+  color: #fffdf8;
+  box-shadow: 0 10rpx 24rpx rgba(217, 142, 170, 0.24);
+}
+
+.mode-toggle.active text,
+.floating-tool-dock .tool-btn.active text,
+.font-item.active,
+.size-item.active,
+.pattern-item.active,
+.rect-shape-item.active text,
+.rect-line-item.active text,
+.rect-width-item.active,
+.border-width-item.active,
+.border-style-item.active text {
+  color: #fffdf8;
+}
+
+.mode-toggle.active .ui-icon,
+.floating-tool-dock .tool-btn.active .ui-icon {
+  filter: brightness(0) invert(1);
+}
+
+.canvas-wrapper {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(234, 184, 200, 0.26), transparent 28%),
+    radial-gradient(circle at 86% 24%, rgba(168, 220, 201, 0.22), transparent 24%),
+    linear-gradient(90deg, rgba(168,143,128,0.08) 1rpx, transparent 1rpx) 0 0 / 36rpx 36rpx,
+    linear-gradient(0deg, rgba(168,143,128,0.08) 1rpx, transparent 1rpx) 0 0 / 36rpx 36rpx,
+    #fff7ed;
+}
+
+.page-shell {
+  background: #fffdf8;
+  border-color: #eadccf;
+  box-shadow: 0 26rpx 58rpx rgba(122, 86, 58, 0.16);
+}
+
+.paper-canvas {
+  border-color: #eadccf;
+  box-shadow: inset 0 0 0 2rpx rgba(255, 255, 255, 0.75);
+}
+
+.selection-toolbar {
+  background: rgba(255, 253, 248, 0.96);
+  border-color: #eadccf;
+  box-shadow: 0 16rpx 42rpx rgba(122, 86, 58, 0.18);
+}
+
+.sel-btn.danger .ui-icon {
+  filter: invert(64%) sepia(33%) saturate(841%) hue-rotate(314deg) brightness(95%) contrast(91%);
+}
+
+.selected-more-sheet,
+.panel,
+.color-picker-modal,
+.fill-image-drag-modal {
+  background: #fffdf8;
+  border-color: #eadccf;
+  box-shadow: 0 -18rpx 48rpx rgba(122, 86, 58, 0.15);
+}
+
+.panel-header,
+.color-picker-header {
+  border-color: #eadccf;
+}
+
+.panel-mask,
+.selected-more-mask,
+.color-picker-mask {
+  background: rgba(75, 57, 48, 0.22);
+}
+
+.floating-tool-dock {
+  background: rgba(255, 253, 248, 0.98);
+  border-color: #eadccf;
+  box-shadow: 0 16rpx 40rpx rgba(122, 86, 58, 0.16);
+}
+
+.floating-tool-dock .tool-btn {
+  color: #4b3930;
+}
+
+.floating-tool-dock .tool-btn text {
+  color: #6f574c;
+  font-size: 19rpx;
+}
+
+.floating-tool-dock .tool-btn .ui-icon {
+  filter: invert(31%) sepia(12%) saturate(930%) hue-rotate(341deg) brightness(90%) contrast(84%);
+}
+
+.panel-search-input,
+.text-input,
+.tag-input,
+.input {
+  background: #fffaf2;
+  color: #4b3930;
+  border-color: #eadccf;
+}
+
+.input-placeholder,
+.search-placeholder {
+  color: #b7a397;
+}
+
+.panel-categories .category-tag,
+.tab-item,
+.selected-more-item {
+  background: #fffaf2;
+  border-color: #eadccf;
+  color: #7b665a;
+}
+
+.panel-categories .category-tag.active,
+.tab-item.active {
+  background: #fdeaf1;
+  color: #b96e8b;
+  border-color: #eab8c8;
+}
+
+.draw-canvas-card {
+  position: relative;
+  height: 360rpx;
+  border: 2rpx dashed #d8b6a5;
+  border-radius: 24rpx;
+  background:
+    linear-gradient(90deg, rgba(168,143,128,0.1) 1rpx, transparent 1rpx) 0 0 / 28rpx 28rpx,
+    linear-gradient(0deg, rgba(168,143,128,0.1) 1rpx, transparent 1rpx) 0 0 / 28rpx 28rpx,
+    #fffaf2;
+  overflow: hidden;
+}
+
+.draw-sticker-canvas {
+  width: 100%;
+  height: 360rpx;
+  display: block;
+}
+
+.draw-empty-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  color: #b7a397;
+  font-size: 26rpx;
+  pointer-events: none;
+}
+
+.draw-width-list,
+.draw-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.draw-width-item {
+  flex: 1;
+  min-width: 0;
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  border: 1rpx solid #eadccf;
+  border-radius: 16rpx;
+  background: #fffaf2;
+  color: #7b665a;
+}
+
+.draw-width-item.active {
+  border-color: #d98eaa;
+  background: #fdeaf1;
+  color: #b96e8b;
+}
+
+.draw-width-preview {
+  width: 48rpx;
+  min-height: 4rpx;
+  border-radius: 999rpx;
+  background: currentColor;
+}
+
+.draw-actions .btn {
+  flex: 1;
+}
+
 .page-dots-bar {
   padding: 8rpx 0 10rpx;
   background: rgba(245, 245, 245, 0.95);

@@ -174,6 +174,17 @@
   filter: drop-shadow(0 18rpx 18rpx rgba(0,0,0,0.38));
 }
 
+.result-image-wrapper.effect-photo-frame {
+  padding: 18rpx 18rpx 48rpx;
+  background: #fffdf8;
+  border-color: rgba(168, 143, 128, 0.3);
+  box-shadow: 0 18rpx 38rpx rgba(122, 86, 58, 0.16);
+}
+
+.result-image-wrapper.effect-photo-frame .result-image {
+  border-radius: 14rpx;
+}
+
 .postprocess-inline {
   margin: 18rpx 0 22rpx;
   padding: 20rpx;
@@ -249,4 +260,89 @@
   background: rgba(0, 217, 146, 0.15);
   color: #00d992;
   border-color: #00d992;
+}
+
+/* v1.1 soft line-art journal redesign */
+.page {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(234, 184, 200, 0.25), transparent 30%),
+    radial-gradient(circle at 86% 20%, rgba(168, 220, 201, 0.2), transparent 26%),
+    #fff7ed;
+  color: #4b3930;
+  font-family: 'LXGW Yozai', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.page-title,
+.upload-text,
+.processing-text,
+.result-title,
+.error-text,
+.postprocess-title {
+  color: #4b3930;
+}
+
+.subtitle,
+.usage-label,
+.upload-hint,
+.progress-hint,
+.style-label,
+.error-hint,
+.group-label,
+.postprocess-chip,
+.label-chip {
+  color: #9a8678;
+}
+
+.upload-area,
+.preview-thumb,
+.preview-image-wrapper,
+.result-image-wrapper,
+.debug-info,
+.postprocess-inline,
+.postprocess-chip,
+.group-chip {
+  background: #fffdf8;
+  border-color: #eadccf;
+  color: #4b3930;
+  box-shadow: 0 10rpx 26rpx rgba(122, 86, 58, 0.1);
+}
+
+.upload-area {
+  background:
+    linear-gradient(90deg, rgba(168,143,128,0.1) 1rpx, transparent 1rpx) 0 0 / 28rpx 28rpx,
+    linear-gradient(0deg, rgba(168,143,128,0.1) 1rpx, transparent 1rpx) 0 0 / 28rpx 28rpx,
+    #fffaf2;
+}
+
+.upload-area:active,
+.postprocess-chip.active,
+.postprocess-card.active,
+.group-chip.active {
+  border-color: #d98eaa;
+  background: #fdeaf1;
+  color: #c87596;
+}
+
+.progress-fill,
+.btn-primary {
+  background: #d98eaa;
+}
+
+.auto-tag,
+.label-pill,
+.style-badge {
+  background: #fdeaf1;
+  color: #c87596;
+  border-color: #eab8c8;
+}
+
+.btn-secondary {
+  background: #fffaf2;
+  color: #7b665a;
+  border-color: #eadccf;
+}
+
+.postprocess-icon,
+.postprocess-chip.active .postprocess-icon {
+  filter: invert(50%) sepia(20%) saturate(1070%) hue-rotate(295deg) brightness(92%) contrast(86%);
 }

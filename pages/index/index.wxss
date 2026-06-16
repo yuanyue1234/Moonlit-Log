@@ -484,3 +484,137 @@
   height: 32rpx;
   filter: invert(74%) sepia(67%) saturate(456%) hue-rotate(112deg) brightness(103%) contrast(101%);
 }
+
+/* v1.1 soft line-art journal redesign */
+.page {
+  background:
+    radial-gradient(circle at 10% 8%, rgba(234, 184, 200, 0.28), transparent 28%),
+    radial-gradient(circle at 88% 18%, rgba(168, 220, 201, 0.22), transparent 26%),
+    #fff7ed;
+  color: #4b3930;
+  font-family: 'LXGW Yozai', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+.page-title,
+.modal-title,
+.book-name,
+.continue-name,
+.export-name {
+  color: #4b3930;
+}
+
+.subtitle,
+.new-text,
+.theme-name,
+.book-meta,
+.input-placeholder,
+.cover-placeholder,
+.continue-meta {
+  color: #9a8678;
+}
+
+.eyebrow,
+.continue-label,
+.book-tag,
+.btn-collect,
+.export-progress {
+  color: #c87596;
+}
+
+.dashed-divider {
+  border-top-color: rgba(168, 143, 128, 0.32);
+}
+
+.book-card,
+.modal,
+.continue-card,
+.export-card,
+.theme-item,
+.input,
+.cover-picker,
+.tag-chip,
+.book-card-new {
+  background: #fffdf8;
+  border-color: #eadccf;
+  box-shadow: 0 12rpx 32rpx rgba(122, 86, 58, 0.12);
+}
+
+.book-card:active,
+.theme-item.active,
+.book-card-new:active {
+  border-color: #d98eaa;
+  background: #fff5f8;
+}
+
+.continue-card {
+  background: linear-gradient(135deg, rgba(234,184,200,0.22), rgba(255,253,248,0.94));
+}
+
+.export-card {
+  background: linear-gradient(135deg, rgba(245,216,137,0.26), rgba(255,253,248,0.94));
+}
+
+.book-cover {
+  border-bottom: 1rpx solid #eadccf;
+}
+
+.cover-line-art {
+  border-color: rgba(75, 57, 48, 0.42);
+  box-shadow: 0 12rpx 24rpx rgba(122, 86, 58, 0.14);
+}
+
+.cover-spine {
+  border-left-color: rgba(75, 57, 48, 0.32);
+}
+
+.cover-page-line {
+  background: rgba(75, 57, 48, 0.42);
+}
+
+.book-tag,
+.tag-chip {
+  background: #fdeaf1;
+  border-color: #eab8c8;
+}
+
+.book-edit-btn {
+  background: rgba(255, 253, 248, 0.84);
+  border-color: #eadccf;
+}
+
+.line-more {
+  background: #9a8678;
+  box-shadow: 12rpx 0 0 #9a8678, -12rpx 0 0 #9a8678;
+}
+
+.new-icon,
+.icon-add {
+  color: #c87596;
+}
+
+.input,
+.tag-input {
+  color: #4b3930;
+  background: #fffaf2;
+}
+
+.input-label {
+  color: #9a8678;
+}
+
+.theme-item.active {
+  background: #fdeaf1;
+}
+
+.btn-primary,
+.btn-active {
+  background: #d98eaa;
+  border-color: #d98eaa;
+  color: #fffdf8;
+}
+
+.btn-secondary {
+  background: #fffaf2;
+  color: #7b665a;
+  border-color: #eadccf;
+}

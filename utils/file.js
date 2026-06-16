@@ -65,6 +65,9 @@ function cleanupUnusedFiles() {
             if (el.src && el.src.indexOf(userPath) === 0) {
               referencedFiles.add(el.src)
             }
+            if (el.fillImage && el.fillImage.indexOf(userPath) === 0) {
+              referencedFiles.add(el.fillImage)
+            }
           })
         })
       })

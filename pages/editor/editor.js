@@ -109,6 +109,7 @@ Page({
     showBgPanel: false,
     showStickerPanel: false,
     showTextPanel: false,
+    showDrawPanel: false,
     showTemplatePanel: false,
         stickers: [],
     panelSearchKeyword: '',
@@ -131,8 +132,8 @@ Page({
     // 文字
     textInput: '',
     textSize: 32,
-    textColor: '#101010',
-    textColors: ['#101010', '#f2f2f2', '#ffffff', '#00d992', '#ff8ba7', '#a8d8ea', '#ffd93d', '#ff69b4', '#4a90d9', '#bdbdbd', '#8b949e', 'picker'],
+    textColor: '#4B3930',
+    textColors: ['#4B3930', '#7B665A', '#ffffff', '#D98EAA', '#EAB8C8', '#A8DCC9', '#A9D7E8', '#F5D889', '#C7A7E8', '#9A8678', 'picker'],
     textSizes: [24, 28, 32, 36, 40, 48, 56, 64, 72, 80],
     textFontFamily: 'handwriting',
     editingTextId: '',
@@ -154,7 +155,7 @@ Page({
     // 装饰面板已下线，素材入口只保留用户贴纸。
     decorations: [],
     // 背景选项
-    bgColors: ['#FFFFFF', '#FFF8F0', '#FFF5F5', '#F5F0FF', '#F0F5FF', '#F0FFF5', '#FFFFF0', '#F5EDE3', '#1a1a1a', '#1a1520', '#15201a', '#201a15'],
+    bgColors: ['#FFFFFF', '#FFF8F0', '#FFF5F5', '#F7F0FF', '#F0F7FF', '#F0FFF6', '#FFF9DA', '#F5EDE3', '#FDE7EE', '#EAF7F2', '#EEF4FF', '#F8F0E7'],
     bgPatterns: ['blank', 'dots', 'lines', 'grid'],
     bgTexture: 'none',
     // 是否有未保存的图片需要异步加载
@@ -175,19 +176,24 @@ Page({
     rectLineStyle: 'solid', // solid, dashed, dotted
     rectStrokeWidth: 2,
     rectFillColor: 'transparent',
-    rectFillColors: ['#FFFFFF', '#F5F5F5', '#FFD1DC', '#A8D8EA', '#FFD93D', '#00d992', '#FF69B4', '#4A90D9'],
-    rectStrokeColor: '#333333',
-    rectStrokeColors: ['#333333', '#666666', '#999999', '#FF0000', '#00d992', '#4A90D9', '#FF69B4', '#FFD93D'],
+    rectFillColors: ['#FFFFFF', '#FFF8F0', '#FDE7EE', '#DFF3EC', '#E4F3FA', '#FFF1B8', '#F2E9FF', '#F5EDE3'],
+    rectStrokeColor: '#A88F80',
+    rectStrokeColors: ['#4B3930', '#7B665A', '#A88F80', '#D98EAA', '#A8DCC9', '#A9D7E8', '#F5D889', '#C7A7E8'],
+    drawColor: '#4B3930',
+    drawWidth: 8,
+    drawColors: ['#4B3930', '#D98EAA', '#A8DCC9', '#A9D7E8', '#F5D889', '#C7A7E8', '#FFFFFF'],
+    drawWidths: [4, 8, 12, 18],
+    drawHasContent: false,
     // 边框面板
     showBorderPanel: false,
     // 填充图片位置调整面板
     showFillImagePanel: false,
     fillImageDragReady: false,
-    borderColor: '#333333',
+    borderColor: '#D8B6A5',
     borderWidth: 2,
     borderStyle: 'solid',
     borderRadius: 0,
-    borderColors: ['#333333', '#666666', '#999999', '#FFFFFF', '#FF0000', '#00d992', '#4A90D9', '#FF69B4', '#FFD93D', '#FF8C00']
+    borderColors: ['#4B3930', '#7B665A', '#A88F80', '#FFFFFF', '#D98EAA', '#A8DCC9', '#A9D7E8', '#F5D889', '#C7A7E8', '#E58A8A']
   },
 
   // 历史记录
@@ -270,6 +276,7 @@ Page({
     this.history = [JSON.parse(JSON.stringify(page.elements || []))]
     this.historyIndex = 0
     this.updateHistoryState()
+    this._syncPagePhotosToStickerLibrary(page.elements || [])
 
     // 如果从"做成手帐"进来，自动应用收藏模板
     if (fromCollect === '1' && stickerId) {
@@ -1895,6 +1902,66 @@ Page({
     return Math.max(0, ...this.data.elements.map(el => el.zIndex || 0))
   },
 
+  _savePhotoToStickerLibrary(src, options = {}) {
+    if (!src) return null
+    const stickers = storage.getStickers()
+    const existing = stickers.find(item => item.src === src)
+    if (existing) return existing
+
+    const group = options.group || '照片'
+    storage.addGroup(group)
+    const saved = storage.saveSticker({
+      src,
+      category: options.category || 'photo',
+      source: options.source || 'journal-photo',
+      tags: options.tags || ['照片', '手帐素材'],
+      effect: options.effect || 'photo-frame',
+      group,
+      kind: options.kind || 'photo'
+    })
+
+    wx.getImageInfo({
+      src,
+      success: (info) => {
+        storage.updateSticker(saved.id, {
+          originalWidth: info.width || 0,
+          originalHeight: info.height || 0
+        })
+        this.setData({ stickers: storage.getStickers(), panelCategories: this._loadPanelCategories() })
+      }
+    })
+
+    this.setData({ stickers: storage.getStickers(), panelCategories: this._loadPanelCategories() })
+    return saved
+  },
+
+  _syncPagePhotosToStickerLibrary(elements = []) {
+    let added = 0
+    elements.forEach(el => {
+      if (el.type === 'image' && el.src) {
+        const saved = this._savePhotoToStickerLibrary(el.src, {
+          source: el.source === 'drawn-sticker' ? 'drawn-sticker' : 'journal-photo',
+          group: el.source === 'drawn-sticker' ? '手绘' : '照片',
+          tags: el.source === 'drawn-sticker' ? ['手绘', '贴纸'] : ['照片', '手帐素材'],
+          effect: el.effect || (el.source === 'drawn-sticker' ? 'none' : 'photo-frame'),
+          kind: el.source === 'drawn-sticker' ? 'drawn' : 'photo'
+        })
+        if (saved && saved.createdAt && Date.now() - saved.createdAt < 2000) added++
+      }
+      if (el.type === 'decoration' && el.subType === 'rect' && el.fillImage) {
+        const saved = this._savePhotoToStickerLibrary(el.fillImage, {
+          source: 'shape-photo',
+          group: '照片',
+          tags: ['照片', '形状照片', '手帐素材'],
+          effect: 'photo-frame',
+          kind: 'photo'
+        })
+        if (saved && saved.createdAt && Date.now() - saved.createdAt < 2000) added++
+      }
+    })
+    return added
+  },
+
   addSticker(e) {
     const symbol = e.currentTarget.dataset.symbol
     if (!symbol) return
@@ -1943,8 +2010,20 @@ Page({
       rotation: 0,
       scaleX: 1,
       scaleY: 1,
+      stickerAssetId: sticker.id || '',
+      source: sticker.source || '',
       effect: sticker.effect || 'none',
       zIndex: maxZ + 1
+    }
+    if (sticker.originalWidth && sticker.originalHeight) {
+      const ratio = sticker.originalWidth / sticker.originalHeight
+      if (ratio > 1) {
+        newEl.width = 240
+        newEl.height = Math.max(80, 240 / ratio)
+      } else {
+        newEl.height = 240
+        newEl.width = Math.max(80, 240 * ratio)
+      }
     }
     if (fromCollect) {
       newEl.x = 345
@@ -2502,6 +2581,7 @@ Page({
       showBgPanel: false,
       showStickerPanel: false,
       showTemplatePanel: false,
+      showDrawPanel: false,
       textPanelMode: 'edit',
       editingTextId: el.id,
       textInput: el.text || '',
@@ -2522,6 +2602,7 @@ Page({
       showRectPanel: false,
       showBorderPanel: false,
       showFillImagePanel: false,
+      showDrawPanel: false,
       textPanelMode: 'rect',
       editingTextId: el.id,
       textInput: el.text || el.placeholderText || '',
@@ -2619,7 +2700,8 @@ Page({
       showTemplatePanel: false,
       showRectPanel: false,
       showBorderPanel: false,
-      showFillImagePanel: false
+      showFillImagePanel: false,
+      showDrawPanel: false
     })
   },
 
@@ -2634,6 +2716,7 @@ Page({
     if (el.type === 'image') {
       return [
         { key: 'effect-none', label: '无效果', icon: '/assets/icons/x.svg' },
+        { key: 'effect-photo-frame', label: '相框', icon: '/assets/icons/photo-frame.svg' },
         { key: 'effect-white-border', label: '白边', icon: '/assets/icons/sticker.svg' },
         { key: 'effect-paper', label: '纸贴', icon: '/assets/icons/file-text.svg' },
         { key: 'effect-shadow', label: '阴影', icon: '/assets/icons/layers.svg' },
@@ -2675,6 +2758,7 @@ Page({
 
     const effectMap = {
       'effect-none': 'none',
+      'effect-photo-frame': 'photo-frame',
       'effect-white-border': 'white-border',
       'effect-paper': 'paper',
       'effect-shadow': 'shadow'
@@ -2716,14 +2800,19 @@ Page({
       success: (res) => {
         const tempPath = res.tempFiles[0].tempFilePath
         fileUtil.persistFile(tempPath).then(savedSrc => {
+          this._savePhotoToStickerLibrary(savedSrc, { source: 'shape-photo', group: '照片', tags: ['照片', '形状照片', '手帐素材'] })
+          const nextStrokeColor = rectEl.strokeColor && rectEl.strokeColor !== 'transparent' ? rectEl.strokeColor : '#D8B6A5'
+          const nextStrokeWidth = Math.max(rectEl.strokeWidth || 0, 4)
           // 填充图片到矩形内，保留矩形所有属性
           this._updateElement(rectEl.id, {
             fillImage: savedSrc,
             fillColor: 'transparent',
+            strokeColor: nextStrokeColor,
+            strokeWidth: nextStrokeWidth,
             fillImageOffsetX: 0,
             fillImageOffsetY: 0
           })
-          this.setData({ selectedElement: { ...rectEl, fillImage: savedSrc, fillColor: 'transparent', fillImageOffsetX: 0, fillImageOffsetY: 0 } })
+          this.setData({ selectedElement: { ...rectEl, fillImage: savedSrc, fillColor: 'transparent', strokeColor: nextStrokeColor, strokeWidth: nextStrokeWidth, fillImageOffsetX: 0, fillImageOffsetY: 0 } })
           this.pushHistory()
           this.renderCanvas()
           wx.showToast({ title: '已填充图片', icon: 'none' })
@@ -3420,11 +3509,11 @@ Page({
 
   // ==================== 面板切换 ====================
   toggleBgPanel() {
-    this.setData({ showBgPanel: !this.data.showBgPanel, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false })
+    this.setData({ showBgPanel: !this.data.showBgPanel, showStickerPanel: false, showTextPanel: false, showTemplatePanel: false, showDrawPanel: false })
   },
   toggleStickerPanel() {
     const opening = !this.data.showStickerPanel
-    const data = { showStickerPanel: opening, showBgPanel: false, showTextPanel: false, showTemplatePanel: false }
+    const data = { showStickerPanel: opening, showBgPanel: false, showTextPanel: false, showTemplatePanel: false, showDrawPanel: false }
     if (opening) {
       data.panelSearchKeyword = ''
       data.panelActiveCategory = 'all'
@@ -3482,6 +3571,7 @@ Page({
       showStickerPanel: false,
       showTemplatePanel: false,
       showRectPanel: false,
+      showDrawPanel: false,
       textPanelMode: selectedText ? 'edit' : selectedRect ? 'rect' : 'add',
       editingTextId: selectedText ? selectedText.id : selectedRect ? selectedRect.id : '',
       textInput: selectedText ? selectedText.text || '' : selectedRect ? selectedRect.text || selectedRect.placeholderText || '' : '',
@@ -3491,7 +3581,7 @@ Page({
     })
   },
   toggleTemplatePanel() {
-    this.setData({ showTemplatePanel: !this.data.showTemplatePanel, showBgPanel: false, showStickerPanel: false, showTextPanel: false })
+    this.setData({ showTemplatePanel: !this.data.showTemplatePanel, showBgPanel: false, showStickerPanel: false, showTextPanel: false, showDrawPanel: false })
   },
   toggleRectPanel() {
     this.setData({
@@ -3499,7 +3589,23 @@ Page({
       showBgPanel: false,
       showStickerPanel: false,
       showTextPanel: false,
-      showTemplatePanel: false
+      showTemplatePanel: false,
+      showDrawPanel: false
+    })
+  },
+  toggleDrawPanel() {
+    const opening = !this.data.showDrawPanel
+    this.setData({
+      showDrawPanel: opening,
+      showBgPanel: false,
+      showStickerPanel: false,
+      showTextPanel: false,
+      showTemplatePanel: false,
+      showRectPanel: false,
+      showBorderPanel: false,
+      showFillImagePanel: false
+    }, () => {
+      if (opening) this._initDrawStickerCanvas()
     })
   },
   closeAllPanels() {
@@ -3509,6 +3615,7 @@ Page({
       showTextPanel: false,
       showTemplatePanel: false,
       showRectPanel: false,
+      showDrawPanel: false,
       showBorderPanel: false,
       showFillImagePanel: false,
       showSelectedMorePanel: false,
@@ -3518,6 +3625,129 @@ Page({
       textPanelMode: 'add'
     })
   },
+
+  _initDrawStickerCanvas() {
+    const query = wx.createSelectorQuery()
+    query.select('#drawStickerCanvas')
+      .fields({ node: true, size: true, rect: true })
+      .exec((res) => {
+        if (!res || !res[0] || !res[0].node) {
+          setTimeout(() => this._initDrawStickerCanvas(), 120)
+          return
+        }
+        const node = res[0].node
+        const ctx = node.getContext('2d')
+        const width = res[0].width || 320
+        const height = res[0].height || 220
+        const dpr = wx.getSystemInfoSync().pixelRatio || 2
+        node.width = width * dpr
+        node.height = height * dpr
+        ctx.scale(dpr, dpr)
+        ctx.clearRect(0, 0, width, height)
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        this._drawStickerCanvas = node
+        this._drawStickerCtx = ctx
+        this._drawStickerSize = { width, height }
+        this._drawStickerRect = { left: res[0].left || 0, top: res[0].top || 0 }
+        this._drawStickerLast = null
+        this.setData({ drawHasContent: false })
+      })
+  },
+
+  _getDrawPoint(touch) {
+    const rect = this._drawStickerRect || { left: 0, top: 0 }
+    return {
+      x: touch.x !== undefined ? touch.x : (touch.clientX || 0) - rect.left,
+      y: touch.y !== undefined ? touch.y : (touch.clientY || 0) - rect.top
+    }
+  },
+
+  onDrawColor(e) {
+    this.setData({ drawColor: e.currentTarget.dataset.color || '#4B3930' })
+  },
+
+  onDrawWidth(e) {
+    this.setData({ drawWidth: parseInt(e.currentTarget.dataset.width, 10) || 8 })
+  },
+
+  onDrawStickerStart(e) {
+    if (!this._drawStickerCtx || !e.touches || !e.touches[0]) return
+    this._drawStickerLast = this._getDrawPoint(e.touches[0])
+  },
+
+  onDrawStickerMove(e) {
+    if (!this._drawStickerCtx || !this._drawStickerLast || !e.touches || !e.touches[0]) return
+    const next = this._getDrawPoint(e.touches[0])
+    const ctx = this._drawStickerCtx
+    ctx.save()
+    ctx.strokeStyle = this.data.drawColor
+    ctx.lineWidth = this.data.drawWidth
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(this._drawStickerLast.x, this._drawStickerLast.y)
+    ctx.lineTo(next.x, next.y)
+    ctx.stroke()
+    ctx.restore()
+    this._drawStickerLast = next
+    if (!this.data.drawHasContent) this.setData({ drawHasContent: true })
+  },
+
+  onDrawStickerEnd() {
+    this._drawStickerLast = null
+  },
+
+  clearDrawSticker() {
+    if (!this._drawStickerCtx || !this._drawStickerSize) return
+    this._drawStickerCtx.clearRect(0, 0, this._drawStickerSize.width, this._drawStickerSize.height)
+    this._drawStickerLast = null
+    this.setData({ drawHasContent: false })
+  },
+
+  saveDrawSticker() {
+    if (!this._drawStickerCanvas || !this.data.drawHasContent) {
+      wx.showToast({ title: '先画一点内容', icon: 'none' })
+      return
+    }
+
+    wx.canvasToTempFilePath({
+      canvas: this._drawStickerCanvas,
+      fileType: 'png',
+      success: (res) => {
+        fileUtil.persistFile(res.tempFilePath, 'draw_' + Date.now()).then(savedSrc => {
+          storage.addGroup('手绘')
+          const drawSize = this._drawStickerSize || { width: 600, height: 360 }
+          const sticker = storage.saveSticker({
+            src: savedSrc,
+            category: 'draw',
+            source: 'drawn-sticker',
+            tags: ['手绘', '贴纸'],
+            effect: 'none',
+            group: '手绘',
+            kind: 'drawn',
+            originalWidth: drawSize.width,
+            originalHeight: drawSize.height
+          })
+          this.setData({
+            stickers: storage.getStickers(),
+            panelCategories: this._loadPanelCategories(),
+            showDrawPanel: false
+          })
+          this._addStickerAssetToCanvas(sticker)
+          wx.showToast({ title: '已保存为贴纸', icon: 'none' })
+        }).catch(err => {
+          console.error('保存手绘贴纸失败', err)
+          wx.showToast({ title: '保存失败', icon: 'none' })
+        })
+      },
+      fail: (err) => {
+        console.error('导出手绘贴纸失败', err)
+        wx.showToast({ title: '导出失败', icon: 'none' })
+      }
+    })
+  },
+
   // 矩形工具方法
   onRectShape(e) {
     this.setData({ rectShape: e.currentTarget.dataset.shape })
@@ -3627,6 +3857,7 @@ Page({
   },
 
   _addSavedImageElement(src) {
+    const savedSticker = this._savePhotoToStickerLibrary(src, { source: 'journal-photo', group: '照片' })
     // 预加载图片以获取尺寸
     if (!canvasNode) {
       wx.showToast({ title: '画布未就绪', icon: 'none' })
@@ -3658,6 +3889,8 @@ Page({
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
+          effect: 'photo-frame',
+          stickerAssetId: savedSticker ? savedSticker.id : '',
           zIndex: maxZ + 1
         }
         const elements = [...this.data.elements, newEl]
@@ -3678,6 +3911,8 @@ Page({
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
+          effect: 'photo-frame',
+          stickerAssetId: savedSticker ? savedSticker.id : '',
           zIndex: maxZ + 1
         }
         const elements = [...this.data.elements, newEl]
