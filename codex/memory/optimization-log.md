@@ -109,6 +109,9 @@
 - [x] JSON 解析检查：所有 `.json` 文件通过。
 - [x] 编辑器 WXML 静态资源路径检查：37 个静态资源引用均存在。
 - [x] `git diff --check`：仅 LF/CRLF 换行提示，无尾随空格或 diff 格式错误。
+- [x] 微信开发者工具内置编译器验证：所有 `.wxml` 通过 `wcc` 编译；所有 `.wxss` 通过 `wcsc -lc` 编译。
+- [x] 编辑器 `editor.wxss` 编译产物尾部确认包含暖纸色 render-order guard，可覆盖历史暗色规则。
+- [x] 已定位本机微信开发者工具 CLI：`D:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat`；`preview/open/auto/quit` 命令可启动工具但本轮调用未在超时内返回，未获得二维码或 GUI 截图。
 
 ### 待完成
 - [ ] 微信开发者工具运行回归：确认编辑页背景、顶部栏、页码栏、工具栏和所有底部弹层都保持暖纸线条风。
@@ -116,4 +119,5 @@
 - [ ] 真机/预览回归：确认 TabBar PNG 图标、编辑页 SVG 图标和 hover/active 状态在移动端足够清楚。
 
 ### Git 提交记录
-- `fix: 修复编辑页线条风与全屏手绘工作台` - 待提交至 `dev`。
+- `6dcb021` - `fix: 修复编辑页线条风与全屏手绘工作台`，已推送到 `origin/dev`。
+- (待提交) 记录本轮微信开发者工具 `wcc/wcsc` 编译验证结果。
