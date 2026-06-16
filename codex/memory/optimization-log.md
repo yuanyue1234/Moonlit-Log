@@ -56,12 +56,14 @@
 - [x] 更新 `codex/memory/project-memory.md`，记录本次发布目标、分支口径和后续计划方向。
 
 ### 待完成
-- [ ] 将本地 `master` 规范为 `main`，创建并推送 `dev` 分支。
-- [ ] 清理旧本地分支 `feature/editor-enhancements`。
-- [ ] 提交本轮文档与 memory 更新，创建 `v1.0.1` tag 并推送到 GitHub。
+- [x] 将本地 `master` 规范为 `main`。
+- [x] 清理旧本地分支 `feature/editor-enhancements`。
+- [x] 提交本轮文档与 memory 更新，创建 `v1.0.1` tag 并推送到 GitHub。
+- [x] 从正式版创建并推送 `dev` 分支，后续计划性更新从 `dev` 开始。
 - [ ] 因本机未安装 GitHub CLI `gh`，本轮不创建 GitHub PR；如后续需要 PR，需要先安装并登录 `gh`。
 - [ ] v1.0.2 前仍需在微信开发者工具中做完整手动回归。
 
 ### Git 提交记录
-- 计划提交：`v1.0.1: 正式发布手帐文档与更新路线图`
-- 计划标签：`v1.0.1`
+- `f4cd0c0` - `v1.0.1: 正式发布手帐文档与更新路线图`，已推送到 `origin/main`。
+- `v1.0.1` - 正式版本 tag，已推送到 GitHub。
+- `dev` - 后续冒险分支，已推送并跟踪 `origin/dev`。

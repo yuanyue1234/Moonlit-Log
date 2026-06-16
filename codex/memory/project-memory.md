@@ -31,4 +31,5 @@
 - 分支整理口径：远端主线为 `origin/main`；本地旧分支 `feature/editor-enhancements` 已完全并入当前主线，可清理；本地 `master` 计划规范为 `main`。
 - 新增 `docs/计划性更新路线图.md`：调研时光手帐、微手帐、Goodnotes、Zinnia、Day One、Journey、Diarium、Grid Diary/格志日记、Apple Journal、LemonJournal 小程序 demo、Canva 等产品后，整理 v1.0.2-v1.5 的计划性更新节奏。
 - 后续产品方向：保持本地优先和隐私优先；近期优先做“今日一页入口、提示卡、心情标签、最近使用、JSON 备份导出、手动回归清单”，暂缓云同步、社区、AI 抠图等高风险能力。
+- 发布完成状态：`main` 已推送到 GitHub，`v1.0.1` tag 指向正式发布提交 `f4cd0c0`；`dev` 已从该正式版本切出并推送，作为后续更新分支。本机未安装 GitHub CLI `gh`，因此本轮未创建 PR。
 
