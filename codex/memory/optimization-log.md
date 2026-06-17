@@ -211,7 +211,9 @@
 - [x] 新增 `docs/编辑页运行回归清单.md`，整理 GUI/真机回归步骤，覆盖视觉统一、页码条、删页贴纸同步、封面图删除、图片裁切和全屏手绘。
 - [x] 使用正常用户环境确认微信开发者工具 CLI 帮助可用。
 - [x] 尝试 `cli.bat preview --project ... --port 9421` 生成预览证据；命令 180 秒未返回，未生成 `devtools-preview.png` 或 `devtools-preview-info.json`。
+- [x] 尝试 `cli.bat auto --project ... --port 9421 --trust-project` 启动自动化；命令 60 秒未返回，9421 端口无监听。
 - [x] 精确清理本次 preview 超时残留的 `cmd/node` 进程，确认 9421 端口无监听。
+- [x] 精确清理本次 auto 超时残留的 `cmd/node` 进程，确认 9421 端口无监听。
 
 ### 验证
 - [x] `node scripts/verify-sticker-lifecycle.js`：通过 9 项检查。

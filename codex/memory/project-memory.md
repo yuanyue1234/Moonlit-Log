@@ -77,4 +77,5 @@
 - 当前脚本运行结果：`node scripts/verify-sticker-lifecycle.js` 通过 9 项检查；`node --check scripts/verify-sticker-lifecycle.js` 通过。
 - 新增 `docs/编辑页运行回归清单.md`，记录 GUI/真机必须确认的完整步骤：视觉统一、页码条和页面管理、图片/贴纸/删页、图片裁切、全屏手绘、自动检查命令。
 - 正常用户环境下 `cli.bat --help` 可用；但 `cli.bat preview --project ... --port 9421` 等待 180 秒未返回，也未生成预览二维码/信息文件。超时后已精确清理本次 preview 残留的 `cmd/node` 进程，9421 端口无监听。运行时证据仍需 GUI/真机完成。
+- 补充尝试 `cli.bat auto --project ... --port 9421 --trust-project --disable-gpu`，等待 60 秒未返回，9421 端口仍无监听；本次 auto 残留的 `cmd/node` 进程已按 PID 精确清理。因此当前自动化入口无法提供真机/模拟器交互证据。
 
