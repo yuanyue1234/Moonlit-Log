@@ -203,3 +203,28 @@
 
 ### Git 提交记录
 - `1a296c9` - `test: 增加编辑页 UI 护栏检查`，已推送到 `origin/dev`。
+
+## 2026-06-17 dev 贴纸生命周期检查与 GUI 回归清单
+
+### 已完成
+- [x] 新增 `scripts/verify-sticker-lifecycle.js`，用 `wx` mock 验证删除页面清理唯一贴纸、保留仍被其他页面引用的文件、封面图清空后回收对应贴纸文件。
+- [x] 新增 `docs/编辑页运行回归清单.md`，整理 GUI/真机回归步骤，覆盖视觉统一、页码条、删页贴纸同步、封面图删除、图片裁切和全屏手绘。
+- [x] 使用正常用户环境确认微信开发者工具 CLI 帮助可用。
+- [x] 尝试 `cli.bat preview --project ... --port 9421` 生成预览证据；命令 180 秒未返回，未生成 `devtools-preview.png` 或 `devtools-preview-info.json`。
+- [x] 精确清理本次 preview 超时残留的 `cmd/node` 进程，确认 9421 端口无监听。
+
+### 验证
+- [x] `node scripts/verify-sticker-lifecycle.js`：通过 9 项检查。
+- [x] `node --check scripts/verify-sticker-lifecycle.js`：通过。
+- [x] `node scripts/verify-editor-ui.js`：通过 41 项检查。
+- [x] `node --check pages/editor/editor.js`：通过。
+- [x] `node --check utils/storage.js`：通过。
+- [x] 微信开发者工具内置 `wcc`：当前所有 WXML 文件通过编译。
+- [x] 微信开发者工具内置 `wcsc -lc`：当前所有 WXSS 文件通过编译。
+- [x] JSON 解析检查：当前 9 个 `.json` 文件均可解析。
+
+### 待完成
+- [ ] GUI/真机仍需确认：`wx.cropImage` 弹窗、手绘下半区连续绘制、删除封面图后重进、删页后贴纸库无残留。
+
+### Git 提交记录
+- 待提交：`test: 增加贴纸生命周期检查`

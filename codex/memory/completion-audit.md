@@ -38,9 +38,12 @@
 - 图片更多菜单含“裁切”，裁切后替换图片、生成唯一贴纸并清理旧贴纸；删页/删元素/清空页会回收页面独有贴纸，封面图删除会清掉 `book.coverImage`。
 - 静态验证已通过：`node --check` 覆盖 `editor.js`/`storage.js`；微信开发者工具 `wcc`/`wcsc -lc` 编译当前 WXML/WXSS；编辑页 35 个直接本地静态资源引用均存在；9 个 JSON 文件可解析；storage mock 证明删页会清理图片贴纸记录。
 - 新增 `scripts/verify-editor-ui.js` 将上述 UI/手绘/贴纸约束固化为 41 项自动检查，当前 `node scripts/verify-editor-ui.js` 通过。
+- 新增 `scripts/verify-sticker-lifecycle.js` 将删页清理唯一贴纸、保留仍被其他页面引用的文件、封面 `coverImage` 清空后回收贴纸固化为 9 项自动检查，当前 `node scripts/verify-sticker-lifecycle.js` 通过。
+- 新增 `docs/编辑页运行回归清单.md`，运行时待验证步骤已经整理为可执行清单。
 
 ### 尚未被当前证据证明
 - 微信开发者工具 GUI/真机中，编辑页实际视觉是否完全符合参考图，包括弹层背景、hover/触摸态观感、移动端图标清晰度。
 - 真机/模拟器中手绘下半部分是否可持续绘制，颜色/粗细弹层、橡皮切换、贴纸盖章、撤销/重做、完成保存是否全部可交互。
 - `wx.cropImage` 在当前目标基础库/真机中是否可打开裁切界面并返回结果；当前代码有不支持时的 toast fallback。
 - 删除封面图后回到首页再重新进入手账本、添加图片后删页再查看贴纸库等完整用户流程仍需 GUI/真机回归确认。
+- 正常用户环境下微信开发者工具 CLI 帮助可用，但 `preview --project ... --port 9421` 180 秒未返回且未生成二维码/信息文件；本次残留进程已清理，CLI preview 仍不能提供完成证据。

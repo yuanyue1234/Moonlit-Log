@@ -72,3 +72,9 @@
 - 当前脚本运行结果：`node scripts/verify-editor-ui.js` 通过 41 项检查；`node --check scripts/verify-editor-ui.js` 通过。
 - 当前仍不能代替 GUI/真机验证：它能防止代码结构和资源回退，但不能证明微信开发者工具模拟器/真机中的实际触摸、裁切弹窗、画布下半区绘制和视觉贴合参考图。
 
+## 2026-06-17 dev 贴纸生命周期脚本与运行回归清单
+- 新增 `scripts/verify-sticker-lifecycle.js`，用本地 `wx` mock 验证贴纸生命周期：删除页面会移除页面独有贴纸、孤立文件会被回收、被其他页面继续引用的文件不会被误删、封面 `coverImage` 清空后可回收原封面贴纸。
+- 当前脚本运行结果：`node scripts/verify-sticker-lifecycle.js` 通过 9 项检查；`node --check scripts/verify-sticker-lifecycle.js` 通过。
+- 新增 `docs/编辑页运行回归清单.md`，记录 GUI/真机必须确认的完整步骤：视觉统一、页码条和页面管理、图片/贴纸/删页、图片裁切、全屏手绘、自动检查命令。
+- 正常用户环境下 `cli.bat --help` 可用；但 `cli.bat preview --project ... --port 9421` 等待 180 秒未返回，也未生成预览二维码/信息文件。超时后已精确清理本次 preview 残留的 `cmd/node` 进程，9421 端口无监听。运行时证据仍需 GUI/真机完成。
+
