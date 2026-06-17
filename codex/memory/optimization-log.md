@@ -181,3 +181,25 @@
 ### Git 提交记录
 - `ca98316` - `fix: 同步贴纸资产与手绘裁切交互`，已推送到 `origin/dev`。
 - `4b077ed` - `docs: 更新贴纸同步提交记录`，已推送到 `origin/dev`。
+
+## 2026-06-17 dev 编辑页 UI/手绘静态护栏脚本
+
+### 已完成
+- [x] 新增 `scripts/verify-editor-ui.js`，把编辑页 UI 统一、TabBar 图标、SVG 图标可见性、hover 覆盖、自定义颜色入口、预览页码条、手绘工具栏结构、画布铺满、裁切入口、贴纸唯一字段和删页/封面清理链路固化为自动检查。
+- [x] 脚本当前覆盖 41 项检查，可作为后续每次修改编辑页/手绘/贴纸链路后的快速回归门。
+
+### 验证
+- [x] `node scripts/verify-editor-ui.js`：通过 41 项检查。
+- [x] `node --check scripts/verify-editor-ui.js`：通过。
+- [x] `node --check pages/editor/editor.js`：通过。
+- [x] `node --check utils/storage.js`：通过。
+- [x] 微信开发者工具内置 `wcc`：当前所有 WXML 文件通过编译。
+- [x] 微信开发者工具内置 `wcsc -lc`：当前所有 WXSS 文件通过编译。
+- [x] JSON 解析检查：当前 9 个 `.json` 文件均可解析。
+- [x] `git diff --check`：无尾随空白或 diff 格式错误。
+
+### 待完成
+- [ ] GUI/真机仍需确认：手绘下半区真实绘制、撤销/重做触摸、`wx.cropImage` 裁切弹窗、封面图删除后重进手账本、删页后贴纸库无残留。
+
+### Git 提交记录
+- 待提交：`test: 增加编辑页 UI 护栏检查`

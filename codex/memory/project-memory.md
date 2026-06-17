@@ -67,3 +67,8 @@
 - 图片更多菜单新增“裁切”入口，使用 `wx.cropImage` 成功后持久化裁切图、替换当前图片元素、生成新的唯一贴纸，并回收旧贴纸；锁定图片会阻止裁切。
 - 本轮验证：`node --check pages/editor/editor.js`、`node --check utils/storage.js` 通过；storage mock 验证“图片贴纸入库后删除页面，贴纸库记录同步清零”通过；微信开发者工具内置 `wcc`/`wcsc -lc` 通过当前所有 WXML/WXSS；编辑页 35 个直接本地静态资源引用均存在；9 个 JSON 文件均可解析；`git diff --check` 仅提示 LF/CRLF 换行，无尾随空白错误。项目没有 `package.json`，本轮无 npm 构建脚本可运行；微信开发者工具 CLI 运行验证仍需在可控 CLI 端口/GUI 真机中补做。
 
+## 2026-06-17 dev 编辑页 UI/手绘护栏脚本
+- 新增 `scripts/verify-editor-ui.js`，将本轮目标固化为 41 项静态护栏：TabBar 暖色与图标文件、SVG 无 `currentColor`、编辑页本地资源存在、soft-hover 覆盖、自定义颜色 `+` 放大、预览态页码条、手绘顶部撤销/重做/完成、底部四工具顺序、画布铺满、裁切入口、贴纸唯一字段和删页/封面清理链路。
+- 当前脚本运行结果：`node scripts/verify-editor-ui.js` 通过 41 项检查；`node --check scripts/verify-editor-ui.js` 通过。
+- 当前仍不能代替 GUI/真机验证：它能防止代码结构和资源回退，但不能证明微信开发者工具模拟器/真机中的实际触摸、裁切弹窗、画布下半区绘制和视觉贴合参考图。
+
