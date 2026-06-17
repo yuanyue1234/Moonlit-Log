@@ -164,6 +164,10 @@
 - [x] `node --check pages/editor/editor.js` 通过。
 - [x] `node --check utils/storage.js` 通过。
 - [x] storage mock 验证：新增图片贴纸入库后删除对应页面，贴纸库记录同步从 1 清零。
+- [x] 微信开发者工具内置 `wcc`：当前所有 WXML 文件通过编译。
+- [x] 微信开发者工具内置 `wcsc -lc`：当前所有 WXSS 文件通过编译。
+- [x] 编辑器静态资源检查：`pages/editor/editor.wxml` 中 35 个直接本地 `/assets` 或 `/images` 引用均存在。
+- [x] JSON 解析检查：当前 9 个 `.json` 文件均可解析。
 - [x] `git diff --check`：仅 LF/CRLF 换行提示，无尾随空白或 diff 格式错误。
 - [x] 项目无 `package.json`，本轮无 npm 构建/测试脚本可运行。
 

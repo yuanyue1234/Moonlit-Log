@@ -26,3 +26,20 @@
 - Canvas 阴影案例：Konva Shadow https://konvajs.org/docs/styling/Shadow.html
 - 图像模糊思路：Konva Blur filter https://konvajs.org/docs/filters/Blur.html
 - 纸面噪声纹理：MDN SVG `feTurbulence` https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Element/feTurbulence
+
+## 2026-06-17 UI/手绘目标完成度审计
+
+### 已被当前证据证明
+- 编辑页暖纸色线条风覆盖仍在 `pages/editor/editor.wxss` 末尾保留，`soft-hover`/`soft-hover-scale` 覆盖顶部按钮、工具栏、选中菜单、弹层关闭、手绘工具按钮等 WXML 入口。
+- `assets/icons` 中不再含 `currentColor`，图标本体使用固定暖棕色；`currentColor` 仅剩于 WXSS 的画笔粗细预览条，不影响 `<image>` 图标可见性。
+- `app.json` TabBar 使用暖纸色背景、暖棕未选中和玫瑰粉选中；`images/tab-*.png` 六个线条图标文件存在。
+- 手绘工作台为全屏结构：顶部关闭/标题/撤销/重做/完成，下方四项工具为选择贴纸、画笔颜色、画笔粗细、工具；`draw-board` 内 canvas 以真实容器尺寸初始化并绝对铺满。
+- 编辑模式下底部页码条隐藏，预览模式显示；页码条不再混入加页/删页按钮，编辑态加页/删页在更多菜单中。
+- 图片更多菜单含“裁切”，裁切后替换图片、生成唯一贴纸并清理旧贴纸；删页/删元素/清空页会回收页面独有贴纸，封面图删除会清掉 `book.coverImage`。
+- 静态验证已通过：`node --check` 覆盖 `editor.js`/`storage.js`；微信开发者工具 `wcc`/`wcsc -lc` 编译当前 WXML/WXSS；编辑页 35 个直接本地静态资源引用均存在；9 个 JSON 文件可解析；storage mock 证明删页会清理图片贴纸记录。
+
+### 尚未被当前证据证明
+- 微信开发者工具 GUI/真机中，编辑页实际视觉是否完全符合参考图，包括弹层背景、hover/触摸态观感、移动端图标清晰度。
+- 真机/模拟器中手绘下半部分是否可持续绘制，颜色/粗细弹层、橡皮切换、贴纸盖章、撤销/重做、完成保存是否全部可交互。
+- `wx.cropImage` 在当前目标基础库/真机中是否可打开裁切界面并返回结果；当前代码有不支持时的 toast fallback。
+- 删除封面图后回到首页再重新进入手账本、添加图片后删页再查看贴纸库等完整用户流程仍需 GUI/真机回归确认。

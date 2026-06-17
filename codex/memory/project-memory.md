@@ -65,5 +65,5 @@
 - 全屏手绘工作台修正可绘制区域：画布初始化以 `.draw-board` 的真实矩形尺寸为准，`.draw-board .draw-sticker-canvas` 在最终 WXSS guard 中绝对铺满容器；旧的 `height: 360rpx` 规则已限定到废弃的 `.draw-canvas-card`。
 - 手绘撤销/重做按钮从画布右下悬浮区移到顶部“完成”按钮旁边，保留与编辑页图标按钮一致的线条风和 hover 状态。
 - 图片更多菜单新增“裁切”入口，使用 `wx.cropImage` 成功后持久化裁切图、替换当前图片元素、生成新的唯一贴纸，并回收旧贴纸；锁定图片会阻止裁切。
-- 本轮验证：`node --check pages/editor/editor.js`、`node --check utils/storage.js` 通过；storage mock 验证“图片贴纸入库后删除页面，贴纸库记录同步清零”通过；`git diff --check` 仅提示 LF/CRLF 换行，无尾随空白错误。项目没有 `package.json`，本轮无 npm 构建脚本可运行；微信开发者工具 CLI 运行验证仍需在可控 CLI 端口/GUI 真机中补做。
+- 本轮验证：`node --check pages/editor/editor.js`、`node --check utils/storage.js` 通过；storage mock 验证“图片贴纸入库后删除页面，贴纸库记录同步清零”通过；微信开发者工具内置 `wcc`/`wcsc -lc` 通过当前所有 WXML/WXSS；编辑页 35 个直接本地静态资源引用均存在；9 个 JSON 文件均可解析；`git diff --check` 仅提示 LF/CRLF 换行，无尾随空白错误。项目没有 `package.json`，本轮无 npm 构建脚本可运行；微信开发者工具 CLI 运行验证仍需在可控 CLI 端口/GUI 真机中补做。
 
