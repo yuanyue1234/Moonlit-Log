@@ -95,7 +95,7 @@
     </view>
   </view>
 
-  <view class="page-dots-bar" wx:if="{{bookPages.length > 0 && editorMode !== 'preview'}}">
+  <view class="page-dots-bar" wx:if="{{bookPages.length > 0 && editorMode === 'preview'}}">
     <view class="page-nav-controls">
       <view class="page-nav-btn {{currentPageIndex <= 0 ? 'disabled' : ''}}" bindtap="onTapPrevPage" hover-class="soft-hover" hover-stay-time="80" aria-label="上一页">
         <image class="ui-icon" src="/assets/icons/chevron-left.svg" mode="aspectFit" />
@@ -107,12 +107,6 @@
       </view>
       <view class="page-nav-btn {{currentPageIndex >= bookPages.length - 1 ? 'disabled' : ''}}" bindtap="onTapNextPage" hover-class="soft-hover" hover-stay-time="80" aria-label="下一页">
         <image class="ui-icon" src="/assets/icons/chevron-right.svg" mode="aspectFit" />
-      </view>
-      <view class="page-nav-btn" bindtap="addNewPage" hover-class="soft-hover" hover-stay-time="80" aria-label="添加下一页">
-        <image class="ui-icon" src="/assets/icons/plus.svg" mode="aspectFit" />
-      </view>
-      <view class="page-nav-btn danger" bindtap="deleteCurrentPage" hover-class="soft-hover" hover-stay-time="80" aria-label="删除此页" wx:if="{{bookPages.length > 1 && !isCoverPage}}">
-        <image class="ui-icon" src="/assets/icons/trash-2.svg" mode="aspectFit" />
       </view>
     </view>
     <scroll-view scroll-x class="dots-scroll" enhanced show-scrollbar="{{false}}">
@@ -211,7 +205,15 @@
         <text class="draw-title">绘制贴纸</text>
         <text class="draw-subtitle">{{drawTool === 'eraser' ? '橡皮模式' : '画笔模式'}} · {{drawWidth}}px</text>
       </view>
-      <view class="draw-save-btn {{!drawHasContent ? 'disabled' : ''}}" bindtap="saveDrawSticker" hover-class="soft-hover" hover-stay-time="80">完成</view>
+      <view class="draw-top-actions">
+        <view class="draw-ghost-btn {{!drawCanUndo ? 'disabled' : ''}}" bindtap="undoDrawSticker" hover-class="soft-hover" hover-stay-time="80">
+          <image class="draw-tool-icon" src="/assets/icons/undo.svg" mode="aspectFit" />
+        </view>
+        <view class="draw-ghost-btn {{!drawCanRedo ? 'disabled' : ''}}" bindtap="redoDrawSticker" hover-class="soft-hover" hover-stay-time="80">
+          <image class="draw-tool-icon" src="/assets/icons/redo.svg" mode="aspectFit" />
+        </view>
+        <view class="draw-save-btn {{!drawHasContent ? 'disabled' : ''}}" bindtap="saveDrawSticker" hover-class="soft-hover" hover-stay-time="80">完成</view>
+      </view>
     </view>
 
     <view class="draw-board">
@@ -226,15 +228,6 @@
       />
       <view class="draw-empty-hint" wx:if="{{!drawHasContent}}">
         <text>在这里画一枚自己的贴纸</text>
-      </view>
-    </view>
-
-    <view class="draw-floating-actions">
-      <view class="draw-ghost-btn {{!drawCanUndo ? 'disabled' : ''}}" bindtap="undoDrawSticker" hover-class="soft-hover" hover-stay-time="80">
-        <image class="draw-tool-icon" src="/assets/icons/undo.svg" mode="aspectFit" />
-      </view>
-      <view class="draw-ghost-btn {{!drawCanRedo ? 'disabled' : ''}}" bindtap="redoDrawSticker" hover-class="soft-hover" hover-stay-time="80">
-        <image class="draw-tool-icon" src="/assets/icons/redo.svg" mode="aspectFit" />
       </view>
     </view>
 

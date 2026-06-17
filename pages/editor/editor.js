@@ -1904,6 +1904,28 @@ Page({
     this.setData({ elements, selectedElement })
   },
 
+  _cleanupOwnedStickerForElement(el, nextElements = []) {
+    if (!el) return
+    const stillUsedOnPage = (nextElements || []).some(item => {
+      if (!item || item.id === el.id) return false
+      return (el.stickerAssetId && item.stickerAssetId === el.stickerAssetId) ||
+        (el.fillStickerId && item.fillStickerId === el.fillStickerId) ||
+        (el.sourceStickerId && item.sourceStickerId === el.sourceStickerId) ||
+        (el.src && item.src === el.src) ||
+        (el.fillImage && item.fillImage === el.fillImage)
+    })
+    if (this.data.isCoverPage && el.type === 'image' && el.src) {
+      const book = storage.getBookById(this.data.bookId)
+      if (book && book.coverImage === el.src) {
+        storage.clearBookCoverImage(this.data.bookId, el.src)
+      }
+    }
+
+    if (!stillUsedOnPage) {
+      storage.deleteStickersForElements([el], { id: this.data.pageId, bookId: this.data.bookId })
+    }
+  },
+
   _getMaxZIndex() {
     return Math.max(0, ...this.data.elements.map(el => el.zIndex || 0))
   },
@@ -1911,8 +1933,24 @@ Page({
   _savePhotoToStickerLibrary(src, options = {}) {
     if (!src) return null
     const stickers = storage.getStickers()
+    const ownerMeta = {
+      ownerBookId: options.ownerBookId || this.data.bookId || '',
+      ownerPageId: options.ownerPageId || this.data.pageId || '',
+      ownerElementId: options.ownerElementId || '',
+      linkedPageId: options.linkedPageId || options.ownerPageId || this.data.pageId || '',
+      linkedElementId: options.linkedElementId || options.ownerElementId || '',
+      uniqueAsset: options.uniqueAsset !== undefined ? !!options.uniqueAsset : true
+    }
     const existing = stickers.find(item => item.src === src)
-    if (existing) return existing
+    if (existing) {
+      const missingMeta = {}
+      Object.keys(ownerMeta).forEach(key => {
+        if (ownerMeta[key] && existing[key] !== ownerMeta[key]) missingMeta[key] = ownerMeta[key]
+      })
+      return Object.keys(missingMeta).length > 0
+        ? (storage.updateSticker(existing.id, missingMeta) || existing)
+        : existing
+    }
 
     const group = options.group || '照片'
     storage.addGroup(group)
@@ -1923,7 +1961,8 @@ Page({
       tags: options.tags || ['照片', '手帐素材'],
       effect: options.effect || 'photo-frame',
       group,
-      kind: options.kind || 'photo'
+      kind: options.kind || 'photo',
+      ...ownerMeta
     })
 
     wx.getImageInfo({
@@ -1950,7 +1989,9 @@ Page({
           group: el.source === 'drawn-sticker' ? '手绘' : '照片',
           tags: el.source === 'drawn-sticker' ? ['手绘', '贴纸'] : ['照片', '手帐素材'],
           effect: el.effect || (el.source === 'drawn-sticker' ? 'none' : 'photo-frame'),
-          kind: el.source === 'drawn-sticker' ? 'drawn' : 'photo'
+          kind: el.source === 'drawn-sticker' ? 'drawn' : 'photo',
+          ownerElementId: el.id,
+          uniqueAsset: true
         })
         if (saved && saved.createdAt && Date.now() - saved.createdAt < 2000) added++
       }
@@ -1960,7 +2001,9 @@ Page({
           group: '照片',
           tags: ['照片', '形状照片', '手帐素材'],
           effect: 'photo-frame',
-          kind: 'photo'
+          kind: 'photo',
+          ownerElementId: el.id,
+          uniqueAsset: true
         })
         if (saved && saved.createdAt && Date.now() - saved.createdAt < 2000) added++
       }
@@ -2002,11 +2045,11 @@ Page({
     this.setData({ showStickerPanel: false })
   },
 
-  _addStickerAssetToCanvas(sticker, fromCollect) {
+  _addStickerAssetToCanvas(sticker, fromCollect, options = {}) {
     if (!sticker || !sticker.src) return false
     const maxZ = this._getMaxZIndex()
     let newEl = {
-      id: 'el_' + Date.now(),
+      id: options.elementId || 'el_' + Date.now(),
       type: 'image',
       src: sticker.src,
       x: canvasWidth / 2,
@@ -2036,6 +2079,16 @@ Page({
       newEl.y = 320
       newEl.width = 400
       newEl.height = 400
+    }
+    if (sticker.id && options.bindSticker) {
+      storage.updateSticker(sticker.id, {
+        ownerBookId: this.data.bookId || '',
+        ownerPageId: this.data.pageId || '',
+        ownerElementId: newEl.id,
+        linkedPageId: this.data.pageId || '',
+        linkedElementId: newEl.id,
+        uniqueAsset: true
+      })
     }
     const elements = [...this.data.elements, newEl]
     this.setData({ elements, selectedId: newEl.id, selectedElement: newEl })
@@ -2467,6 +2520,7 @@ Page({
       return
     }
     const newElements = elements.filter(el => el.id !== selectedId)
+    this._cleanupOwnedStickerForElement(el, newElements)
     this.setData({ elements: newElements, selectedId: null, selectedElement: null })
     this._updateToolbarFixedStyle()
     this.pushHistory()
@@ -2721,6 +2775,7 @@ Page({
   _buildSelectedMoreActions(el) {
     if (el.type === 'image') {
       return [
+        { key: 'crop-image', label: '裁切', icon: '/assets/icons/scissors.svg' },
         { key: 'effect-none', label: '无效果', icon: '/assets/icons/x.svg' },
         { key: 'effect-photo-frame', label: '相框', icon: '/assets/icons/photo-frame.svg' },
         { key: 'effect-white-border', label: '白边', icon: '/assets/icons/sticker.svg' },
@@ -2775,6 +2830,9 @@ Page({
     }
 
     switch (action) {
+      case 'crop-image':
+        this.cropSelectedImage(el)
+        break
       case 'rect-text':
         this.openSelectedRectTextEditor()
         break
@@ -2798,6 +2856,62 @@ Page({
         break
     }
   },
+  cropSelectedImage(el) {
+    const target = el || this._getSelectedElement()
+    if (!target || target.type !== 'image' || !target.src) return
+    if (target.locked) {
+      wx.showToast({ title: '已锁定，先解锁再裁切', icon: 'none', duration: 1000 })
+      return
+    }
+    if (typeof wx.cropImage !== 'function') {
+      wx.showToast({ title: '当前版本不支持裁切', icon: 'none' })
+      return
+    }
+
+    wx.cropImage({
+      src: target.src,
+      cropScale: '1:1',
+      success: (res) => {
+        const tempPath = res.tempFilePath || res.filePath
+        if (!tempPath) {
+          wx.showToast({ title: '裁切失败', icon: 'none' })
+          return
+        }
+        fileUtil.persistFile(tempPath, 'crop_' + Date.now()).then(savedSrc => {
+          const current = this._getSelectedElement()
+          if (!current || current.id !== target.id) return
+          const savedSticker = this._savePhotoToStickerLibrary(savedSrc, {
+            source: 'journal-photo',
+            group: '照片',
+            tags: ['照片', '裁切', '手帐素材'],
+            effect: current.effect || 'photo-frame',
+            kind: 'photo',
+            ownerElementId: current.id,
+            uniqueAsset: true
+          })
+          const updates = {
+            src: savedSrc,
+            source: 'journal-photo',
+            stickerAssetId: savedSticker ? savedSticker.id : ''
+          }
+          const nextElements = this.data.elements.map(item => item.id === current.id ? { ...item, ...updates } : item)
+          this._cleanupOwnedStickerForElement(current, nextElements)
+          this._updateElement(current.id, updates)
+          this.pushHistory()
+          this.renderCanvas()
+          wx.showToast({ title: '已裁切图片', icon: 'none' })
+        }).catch(err => {
+          console.error('裁切图片保存失败', err)
+          wx.showToast({ title: '裁切保存失败', icon: 'none' })
+        })
+      },
+      fail: (err) => {
+        if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) return
+        console.error('裁切图片失败', err)
+        wx.showToast({ title: '裁切失败', icon: 'none' })
+      }
+    })
+  },
   fillRectWithImage(rectEl) {
     wx.chooseMedia({
       count: 1,
@@ -2806,19 +2920,29 @@ Page({
       success: (res) => {
         const tempPath = res.tempFiles[0].tempFilePath
         fileUtil.persistFile(tempPath).then(savedSrc => {
-          this._savePhotoToStickerLibrary(savedSrc, { source: 'shape-photo', group: '照片', tags: ['照片', '形状照片', '手帐素材'] })
+          const savedSticker = this._savePhotoToStickerLibrary(savedSrc, {
+            source: 'shape-photo',
+            group: '照片',
+            tags: ['照片', '形状照片', '手帐素材'],
+            ownerElementId: rectEl.id,
+            uniqueAsset: true
+          })
           const nextStrokeColor = rectEl.strokeColor && rectEl.strokeColor !== 'transparent' ? rectEl.strokeColor : '#D8B6A5'
           const nextStrokeWidth = Math.max(rectEl.strokeWidth || 0, 4)
           // 填充图片到矩形内，保留矩形所有属性
-          this._updateElement(rectEl.id, {
+          const updates = {
             fillImage: savedSrc,
+            fillStickerId: savedSticker ? savedSticker.id : '',
             fillColor: 'transparent',
             strokeColor: nextStrokeColor,
             strokeWidth: nextStrokeWidth,
             fillImageOffsetX: 0,
             fillImageOffsetY: 0
-          })
-          this.setData({ selectedElement: { ...rectEl, fillImage: savedSrc, fillColor: 'transparent', strokeColor: nextStrokeColor, strokeWidth: nextStrokeWidth, fillImageOffsetX: 0, fillImageOffsetY: 0 } })
+          }
+          const nextElements = this.data.elements.map(item => item.id === rectEl.id ? { ...item, ...updates } : item)
+          this._cleanupOwnedStickerForElement(rectEl, nextElements)
+          this._updateElement(rectEl.id, updates)
+          this.setData({ selectedElement: { ...rectEl, ...updates } })
           this.pushHistory()
           this.renderCanvas()
           wx.showToast({ title: '已填充图片', icon: 'none' })
@@ -3286,6 +3410,15 @@ Page({
       content: '确认清空当前页面所有内容？此操作可撤销。',
       success: (res) => {
         if (res.confirm) {
+          const oldElements = this.data.elements || []
+          if (this.data.isCoverPage) {
+            const book = storage.getBookById(this.data.bookId)
+            const coverImage = book && book.coverImage
+            if (coverImage && oldElements.some(el => el && el.type === 'image' && el.src === coverImage)) {
+              storage.clearBookCoverImage(this.data.bookId, coverImage)
+            }
+          }
+          storage.deleteStickersForElements(oldElements, { id: this.data.pageId, bookId: this.data.bookId })
           this.setData({
             elements: [],
             selectedId: null,
@@ -3371,14 +3504,18 @@ Page({
   },
 
   toggleMoreMenu() {
-    const { bookPages, currentPageIndex } = this.data
+    const { bookPages, currentPageIndex, editorMode } = this.data
     const currentPage = bookPages && bookPages[currentPageIndex]
-    const canDeletePage = bookPages && bookPages.length > 1 && currentPage && currentPage.role !== 'cover'
+    const canEditPages = editorMode === 'edit'
+    const canDeletePage = canEditPages && bookPages && bookPages.length > 1 && currentPage && currentPage.role !== 'cover'
     const actions = [
       { label: '保存', fn: () => { this._syncSave(); wx.showToast({ title: '已保存', icon: 'none' }) } },
       { label: '导出到相册', fn: () => this.exportImage() },
       { label: '图层管理', fn: () => this.showLayerPanel() }
     ]
+    if (canEditPages) {
+      actions.splice(1, 0, { label: '添加下一页', fn: () => this.addNewPage() })
+    }
     if (canDeletePage) {
       actions.push({ label: '删除此页', fn: () => this._confirmDeletePage(), danger: true })
     }
@@ -3651,15 +3788,18 @@ Page({
     const query = wx.createSelectorQuery()
     query.select('#drawStickerCanvas')
       .fields({ node: true, size: true, rect: true })
+    query.select('.draw-board').boundingClientRect()
       .exec((res) => {
         if (!res || !res[0] || !res[0].node) {
           setTimeout(() => this._initDrawStickerCanvas(), 120)
           return
         }
+        const canvasInfo = res[0]
+        const boardRect = res[1] || canvasInfo
         const node = res[0].node
         const ctx = node.getContext('2d')
-        const width = res[0].width || 320
-        const height = res[0].height || 220
+        const width = boardRect.width || canvasInfo.width || 320
+        const height = boardRect.height || canvasInfo.height || 220
         const dpr = wx.getSystemInfoSync().pixelRatio || 2
         node.width = width * dpr
         node.height = height * dpr
@@ -3670,7 +3810,10 @@ Page({
         this._drawStickerCanvas = node
         this._drawStickerCtx = ctx
         this._drawStickerSize = { width, height }
-        this._drawStickerRect = { left: res[0].left || 0, top: res[0].top || 0 }
+        this._drawStickerRect = {
+          left: boardRect.left || canvasInfo.left || 0,
+          top: boardRect.top || canvasInfo.top || 0
+        }
         this._drawStickerLast = null
         this._drawStickerCurrentStroke = null
         this._redrawDrawStickerCanvas()
@@ -3947,6 +4090,7 @@ Page({
       success: (res) => {
         fileUtil.persistFile(res.tempFilePath, 'draw_' + Date.now()).then(savedSrc => {
           storage.addGroup('手绘')
+          const elementId = 'el_' + Date.now()
           const sticker = storage.saveSticker({
             src: savedSrc,
             category: 'draw',
@@ -3956,7 +4100,13 @@ Page({
             group: '手绘',
             kind: 'drawn',
             originalWidth: bounds.width,
-            originalHeight: bounds.height
+            originalHeight: bounds.height,
+            ownerBookId: this.data.bookId || '',
+            ownerPageId: this.data.pageId || '',
+            ownerElementId: elementId,
+            linkedPageId: this.data.pageId || '',
+            linkedElementId: elementId,
+            uniqueAsset: true
           })
           this.setData({
             stickers: storage.getStickers(),
@@ -3968,7 +4118,7 @@ Page({
           })
           this._drawStickerStrokes = []
           this._drawStickerRedoStack = []
-          this._addStickerAssetToCanvas(sticker)
+          this._addStickerAssetToCanvas(sticker, false, { elementId, bindSticker: true })
           wx.showToast({ title: '已保存为贴纸', icon: 'none' })
         }).catch(err => {
           console.error('保存手绘贴纸失败', err)
@@ -4091,7 +4241,13 @@ Page({
   },
 
   _addSavedImageElement(src) {
-    const savedSticker = this._savePhotoToStickerLibrary(src, { source: 'journal-photo', group: '照片' })
+    const elementId = 'el_' + Date.now()
+    const savedSticker = this._savePhotoToStickerLibrary(src, {
+      source: 'journal-photo',
+      group: '照片',
+      ownerElementId: elementId,
+      uniqueAsset: true
+    })
     // 预加载图片以获取尺寸
     if (!canvasNode) {
       wx.showToast({ title: '画布未就绪', icon: 'none' })
@@ -4113,7 +4269,7 @@ Page({
         h = Math.max(80, Math.min(700, h))
 
         const newEl = {
-          id: 'el_' + Date.now(),
+          id: elementId,
           type: 'image',
           src: src,
           x: canvasWidth / 2,
@@ -4135,7 +4291,7 @@ Page({
         // 加载失败时使用默认尺寸
         const maxZ = this._getMaxZIndex()
         const newEl = {
-          id: 'el_' + Date.now(),
+          id: elementId,
           type: 'image',
           src: src,
           x: canvasWidth / 2,

@@ -2212,6 +2212,13 @@
   color: #9a8678;
 }
 
+.draw-top-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
 .draw-save-btn {
   height: 66rpx;
   min-width: 104rpx;
@@ -2232,7 +2239,8 @@
 .draw-board {
   position: relative;
   flex: 1;
-  margin: 6rpx 24rpx 190rpx;
+  min-height: 0;
+  margin: 6rpx 24rpx 164rpx;
   border: 2rpx dashed #d8b6a5;
   border-radius: 28rpx;
   background:
@@ -2246,6 +2254,12 @@
 }
 
 .draw-sticker-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
   width: 100%;
   height: 100%;
   display: block;
@@ -2261,15 +2275,7 @@
   color: #b7a397;
   font-size: 28rpx;
   pointer-events: none;
-}
-
-.draw-floating-actions {
-  position: absolute;
-  right: 30rpx;
-  bottom: calc(154rpx + env(safe-area-inset-bottom));
-  display: flex;
-  gap: 14rpx;
-  z-index: 4;
+  z-index: 2;
 }
 
 .draw-ghost-btn {
@@ -2699,7 +2705,7 @@
   overflow: hidden;
 }
 
-.draw-sticker-canvas {
+.draw-canvas-card .draw-sticker-canvas {
   width: 100%;
   height: 360rpx;
   display: block;
@@ -3253,4 +3259,15 @@
   box-shadow:
     0 0 0 6rpx rgba(217, 142, 170, 0.16),
     0 10rpx 22rpx rgba(122, 86, 58, 0.14) !important;
+}
+
+.draw-board .draw-sticker-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
 }

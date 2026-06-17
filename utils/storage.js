@@ -88,6 +88,16 @@ function updateBook(bookId, data) {
   return books[index]
 }
 
+function clearBookCoverImage(bookId, src = '') {
+  const books = getBooks()
+  const index = books.findIndex(b => b.id === bookId)
+  if (index === -1) return null
+  if (src && books[index].coverImage && books[index].coverImage !== src) return books[index]
+  books[index] = { ...books[index], coverImage: '', updatedAt: Date.now() }
+  saveBooks(books)
+  return books[index]
+}
+
 function deleteBook(bookId) {
   let books = getBooks()
   books = books.filter(b => b.id !== bookId)
@@ -561,10 +571,90 @@ function updatePage(pageId, data) {
   return allPages[index]
 }
 
+function collectElementStickerRefs(elements = []) {
+  const ids = new Set()
+  const srcs = new Set()
+  ;(elements || []).forEach(el => {
+    if (!el) return
+    if (el.stickerAssetId) ids.add(el.stickerAssetId)
+    if (el.sourceStickerId) ids.add(el.sourceStickerId)
+    if (el.fillStickerId) ids.add(el.fillStickerId)
+    if (el.src) srcs.add(el.src)
+    if (el.thumb) srcs.add(el.thumb)
+    if (el.fillImage) srcs.add(el.fillImage)
+  })
+  return { ids, srcs }
+}
+
+function isPageOwnedSticker(sticker, refs, pageInfo = {}) {
+  if (!sticker) return false
+  const matchedById = sticker.id && refs.ids.has(sticker.id)
+  const matchedBySrc = sticker.src && refs.srcs.has(sticker.src)
+  if (!matchedById && !matchedBySrc) return false
+
+  const pageId = pageInfo.id || pageInfo.pageId || ''
+  const bookId = pageInfo.bookId || ''
+  if (sticker.uniqueAsset) return true
+  if (pageId && (sticker.ownerPageId === pageId || sticker.linkedPageId === pageId)) return true
+  if (bookId && sticker.ownerBookId === bookId && matchedById) return true
+
+  // Older photo/drawn assets were auto-saved without owner metadata.
+  return ['journal-photo', 'shape-photo', 'drawn-sticker'].includes(sticker.source)
+}
+
+function isStickerFileReferenced(src, options = {}) {
+  if (!src) return false
+  const ignoredPageIds = new Set(options.ignorePageIds || [])
+  const ignoredStickerIds = new Set(options.ignoreStickerIds || [])
+
+  const pages = wx.getStorageSync(STORAGE_KEYS.PAGES) || []
+  for (const page of pages) {
+    if (ignoredPageIds.has(page.id)) continue
+    const refs = collectElementStickerRefs(page.elements || [])
+    if (refs.srcs.has(src)) return true
+  }
+
+  const books = getBooks()
+  if (books.some(book => book.coverImage === src)) return true
+
+  const stickers = wx.getStorageSync(STORAGE_KEYS.STICKERS) || []
+  return stickers.some(sticker => !ignoredStickerIds.has(sticker.id) && (sticker.src === src || sticker.thumb === src))
+}
+
+function unlinkStickerFileIfUnused(sticker, options = {}) {
+  if (!sticker || !sticker.src || sticker.src.indexOf(wx.env.USER_DATA_PATH) !== 0) return
+  if (isStickerFileReferenced(sticker.src, {
+    ignorePageIds: options.ignorePageIds || [],
+    ignoreStickerIds: [sticker.id, ...(options.ignoreStickerIds || [])]
+  })) return
+
+  try {
+    const fs = wx.getFileSystemManager()
+    fs.unlinkSync(sticker.src)
+  } catch (e) {
+    console.warn('删除贴纸文件失败:', sticker.src, e)
+  }
+}
+
+function deleteStickersForElements(elements = [], pageInfo = {}, options = {}) {
+  const refs = collectElementStickerRefs(elements)
+  if (refs.ids.size === 0 && refs.srcs.size === 0) return 0
+
+  const stickers = wx.getStorageSync(STORAGE_KEYS.STICKERS) || []
+  const targets = stickers.filter(sticker => isPageOwnedSticker(sticker, refs, pageInfo))
+  targets.forEach(sticker => {
+    deleteSticker(sticker.id, {
+      ignorePageIds: options.ignorePageIds || (pageInfo.id || pageInfo.pageId ? [pageInfo.id || pageInfo.pageId] : [])
+    })
+  })
+  return targets.length
+}
+
 function deletePage(pageId) {
   let allPages = wx.getStorageSync(STORAGE_KEYS.PAGES) || []
   const page = allPages.find(p => p.id === pageId)
   if (page) {
+    deleteStickersForElements(page.elements || [], page, { ignorePageIds: [pageId] })
     allPages = allPages.filter(p => p.id !== pageId)
     savePages(allPages)
     // 从手账本中移除
@@ -580,6 +670,11 @@ function deletePage(pageId) {
 
 function deletePagesByBookId(bookId) {
   let allPages = wx.getStorageSync(STORAGE_KEYS.PAGES) || []
+  const pagesToDelete = allPages.filter(p => p.bookId === bookId)
+  const pageIds = pagesToDelete.map(page => page.id)
+  pagesToDelete.forEach(page => {
+    deleteStickersForElements(page.elements || [], page, { ignorePageIds: pageIds })
+  })
   allPages = allPages.filter(p => p.bookId !== bookId)
   savePages(allPages)
 }
@@ -611,8 +706,14 @@ function saveSticker(sticker) {
     extractResultId: sticker.extractResultId || '',
     originalWidth: sticker.originalWidth || 0,
     originalHeight: sticker.originalHeight || 0,
-    createdAt: Date.now(),
     kind: sticker.kind || 'other',
+    ownerBookId: sticker.ownerBookId || '',
+    ownerPageId: sticker.ownerPageId || '',
+    ownerElementId: sticker.ownerElementId || '',
+    linkedPageId: sticker.linkedPageId || '',
+    linkedElementId: sticker.linkedElementId || '',
+    uniqueAsset: !!sticker.uniqueAsset,
+    createdAt: Date.now(),
     activityName: sticker.activityName || '',
     location: sticker.location || '',
     createdAtDate: sticker.createdAtDate || new Date().toISOString().slice(0, 10)
@@ -631,19 +732,11 @@ function updateSticker(stickerId, data) {
   return stickers[index]
 }
 
-function deleteSticker(stickerId) {
+function deleteSticker(stickerId, options = {}) {
   let stickers = wx.getStorageSync(STORAGE_KEYS.STICKERS) || []
   const sticker = stickers.find(s => s.id === stickerId)
 
-  // 删除关联的文件
-  if (sticker && sticker.src && sticker.src.indexOf(wx.env.USER_DATA_PATH) === 0) {
-    try {
-      const fs = wx.getFileSystemManager()
-      fs.unlinkSync(sticker.src)
-    } catch (e) {
-      console.warn('删除贴纸文件失败:', sticker.src, e)
-    }
-  }
+  unlinkStickerFileIfUnused(sticker, options)
 
   stickers = stickers.filter(s => s.id !== stickerId)
   wx.setStorageSync(STORAGE_KEYS.STICKERS, stickers)
@@ -683,10 +776,10 @@ function clearAll() {
 module.exports = {
   STORAGE_KEYS,
   generateId,
-  getBooks, saveBooks, getBookById, createBook, updateBook, deleteBook, getMostRecentBook,
+  getBooks, saveBooks, getBookById, createBook, updateBook, clearBookCoverImage, deleteBook, getMostRecentBook,
   getPages, savePages, getPageById, createPage, ensureCoverPage, refreshCoverPage, updatePage, deletePage, normalizePageElements,
   getBookPageCounts,
-  getStickers, saveSticker, updateSticker, deleteSticker, toggleFavorite,
+  getStickers, saveSticker, updateSticker, deleteSticker, deleteStickersForElements, toggleFavorite,
   getGroups, saveGroups, addGroup, deleteGroup,
   clearAll
 }

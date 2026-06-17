@@ -57,3 +57,13 @@
 - GUI 验证补记：微信开发者工具 Stable v2.01.2510290 中项目可启动到首页，暖纸色背景和底栏书本图标可见；此前 CLI `preview/open/auto/quit` 残留的 `--port 9421` node 进程已按精确命令行清理。
 - 当前仍缺完整运行证据：开发者工具实例已提前打开且无可用 CLI 自动化端口，模拟器在当前桌面布局中被右侧裁切，未能可靠进入编辑页/全屏手绘工作台截图；后续需要关闭并用 CLI 端口重启开发者工具，或由人工在 GUI/真机完成编辑页、弹层、手绘工具栏回归。
 
+## 2026-06-17 dev 贴纸唯一性、删页同步、预览页码和图片裁切
+- 贴纸资产新增归属字段：`ownerBookId`、`ownerPageId`、`ownerElementId`、`linkedPageId`、`linkedElementId`、`uniqueAsset`；新增图片、形状填图、手绘贴纸、裁切后的图片都会写入当前页面/元素归属。
+- `utils/storage.js` 新增页面元素引用扫描与安全删除能力：删单页、删整本书、删除单个元素或清空页面时，会同步清理该页面独有的 `journal-photo`、`shape-photo`、`drawn-sticker` 贴纸记录，并在文件仍被其他页面、书本封面或贴纸记录引用时保留本地文件。
+- 封面图删除链路新增 `clearBookCoverImage()`：删除封面页上的封面图片时先清掉书本 `coverImage` 元数据，再回收贴纸，防止再次点击手账本时旧封面图被系统封面重建逻辑带回来或位置漂移。
+- 编辑页底部页码跳转条改为仅预览模式显示；编辑模式不再显示该底栏，添加下一页和删除此页移动到右上角更多菜单，避免第一页没有删除按钮导致按钮位置不齐。
+- 全屏手绘工作台修正可绘制区域：画布初始化以 `.draw-board` 的真实矩形尺寸为准，`.draw-board .draw-sticker-canvas` 在最终 WXSS guard 中绝对铺满容器；旧的 `height: 360rpx` 规则已限定到废弃的 `.draw-canvas-card`。
+- 手绘撤销/重做按钮从画布右下悬浮区移到顶部“完成”按钮旁边，保留与编辑页图标按钮一致的线条风和 hover 状态。
+- 图片更多菜单新增“裁切”入口，使用 `wx.cropImage` 成功后持久化裁切图、替换当前图片元素、生成新的唯一贴纸，并回收旧贴纸；锁定图片会阻止裁切。
+- 本轮验证：`node --check pages/editor/editor.js`、`node --check utils/storage.js` 通过；storage mock 验证“图片贴纸入库后删除页面，贴纸库记录同步清零”通过；`git diff --check` 仅提示 LF/CRLF 换行，无尾随空白错误。项目没有 `package.json`，本轮无 npm 构建脚本可运行；微信开发者工具 CLI 运行验证仍需在可控 CLI 端口/GUI 真机中补做。
+
