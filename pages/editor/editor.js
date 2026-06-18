@@ -4,12 +4,13 @@ const themeUtil = require('../../utils/theme')
 const templateUtil = require('../../utils/template')
 const fileUtil = require('../../utils/file')
 const imageEffect = require('../../utils/imageEffect')
+const editorLayout = require('../../utils/editorLayout')
 
 // ========== Canvas 全局状态 ==========
 let canvasCtx = null
 let canvasNode = null
-let canvasWidth = 690   // canvas 逻辑宽度 (rpx)
-let canvasHeight = 920  // canvas 逻辑高度 (rpx)
+let canvasWidth = editorLayout.EDITOR_CANVAS_WIDTH
+let canvasHeight = editorLayout.EDITOR_CANVAS_HEIGHT
 let pxRatio = 1
 let canvasPxW = 0       // canvas 物理像素宽
 let canvasPxH = 0       // canvas 物理像素高
@@ -126,8 +127,10 @@ Page({
     canUndo: false,
     canRedo: false,
     isSaving: false,
-    pageWidth: 690,
-    pageHeight: 920,
+    pageWidth: editorLayout.EDITOR_CANVAS_WIDTH,
+    pageHeight: editorLayout.EDITOR_CANVAS_HEIGHT,
+    pageDisplayWidth: editorLayout.EDITOR_CANVAS_WIDTH,
+    pageDisplayHeight: editorLayout.EDITOR_CANVAS_HEIGHT,
     // 文字
     textInput: '',
     textSize: 32,
@@ -292,7 +295,6 @@ Page({
   },
 
   onReady() {
-    this.initCanvas()
     // 监听输入法高度变化
     this._keyboardHandler = (res) => {
       this.setData({ keyboardHeight: res.height > 0 ? res.height : 0 })
@@ -301,21 +303,55 @@ Page({
 
     // 动态获取top-bar实际高度，用于selection-toolbar和floating-tool-dock的正确定位
     // 避免PC端因状态栏+导航栏高度不同导致浮层跑到画布下方
-    const query = wx.createSelectorQuery()
-    query.select('.top-bar').boundingClientRect((rect) => {
-      if (!rect) return
-      const topBarBottomPx = rect.bottom  // px
-      // 转成rpx (750rpx = 屏幕宽度)
-      const screenW = wx.getWindowInfo ? wx.getWindowInfo().windowWidth : (wx.getSystemInfoSync().windowWidth)
-      const rpxRatio = 750 / screenW
+    let canvasInitialized = false
+    const finishCanvasSetup = (rect) => {
+      if (canvasInitialized) return
+      canvasInitialized = true
+      const windowInfo = typeof wx.getWindowInfo === 'function'
+        ? wx.getWindowInfo()
+        : wx.getSystemInfoSync()
+      const rpxRatio = 750 / windowInfo.windowWidth
+      const topBarBottomPx = rect ? rect.bottom : Math.ceil(76 / rpxRatio)
       const topBarBottomRpx = Math.ceil(topBarBottomPx * rpxRatio)
       this._topBarBottomRpx = topBarBottomRpx
       this.setData({
         toolDockTopStyle: `top: ${topBarBottomRpx + 8}rpx;`
       })
-    }).exec()
+      this._fitCanvasToViewport(this.data.editorMode, topBarBottomPx, () => this.initCanvas())
+    }
+
+    const query = wx.createSelectorQuery()
+    query.select('.top-bar').boundingClientRect((rect) => {
+      finishCanvasSetup(rect)
+    }).exec(() => finishCanvasSetup(null))
     // 拖动偏移复位（仅页面加载时）
     _toolbarDragOffset = { x: 0, y: 0 }
+  },
+
+  _fitCanvasToViewport(mode = 'edit', topBarBottomPx, callback) {
+    const windowInfo = typeof wx.getWindowInfo === 'function'
+      ? wx.getWindowInfo()
+      : wx.getSystemInfoSync()
+    const rpxPerPx = 750 / windowInfo.windowWidth
+    const resolvedTopPx = Number.isFinite(topBarBottomPx)
+      ? topBarBottomPx
+      : (this._topBarBottomRpx || 76) / rpxPerPx
+    const { pageDisplayWidth, pageDisplayHeight } = editorLayout.calculateCanvasDisplaySize({
+      mode,
+      windowWidth: windowInfo.windowWidth,
+      windowHeight: windowInfo.windowHeight,
+      safeAreaBottom: windowInfo.safeArea ? windowInfo.safeArea.bottom : windowInfo.windowHeight,
+      topBarBottomPx: resolvedTopPx
+    })
+
+    this.setData({ pageDisplayWidth, pageDisplayHeight }, callback)
+  },
+
+  onResize() {
+    this._fitCanvasToViewport(this.data.editorMode, undefined, () => {
+      this.refreshCanvasRect()
+      this.renderCanvas()
+    })
   },
 
   onShow() {
@@ -4414,9 +4450,13 @@ Page({
       this.setData({ selectedId: null, selectedElement: null })
       this._updateToolbarFixedStyle()
     }
-    this.setData({ editorMode: nextMode, flipClass: '' })
-    this._resetPreviewFlip()
-    this.renderCanvas()
+    this.setData({ editorMode: nextMode, flipClass: '' }, () => {
+      this._fitCanvasToViewport(nextMode, undefined, () => {
+        this.refreshCanvasRect()
+        this._resetPreviewFlip()
+        this.renderCanvas()
+      })
+    })
   },
 
   onPreviewTouchStart(e) {

@@ -29,12 +29,12 @@
 
   <view class="canvas-wrapper" bindtap="closeAllPanels">
     <view class="page-shell">
-      <view class="canvas-container paper-canvas" style="width: {{pageWidth}}rpx; height: {{pageHeight}}rpx;">
+      <view class="canvas-container paper-canvas" style="width: {{pageDisplayWidth}}rpx; height: {{pageDisplayHeight}}rpx;">
         <canvas
           id="editorCanvas"
           type="2d"
           class="editor-canvas"
-          style="width: {{pageWidth}}rpx; height: {{pageHeight}}rpx;"
+          style="width: {{pageDisplayWidth}}rpx; height: {{pageDisplayHeight}}rpx;"
           bindtouchstart="onTouchStart"
           bindtouchmove="onTouchMove"
           bindtouchend="onTouchEnd"
@@ -119,6 +119,25 @@
         <image class="ui-icon" src="/assets/icons/trash-2.svg" mode="aspectFit" />
       </view>
     </view>
+  </view>
+
+  <view class="page-dots-bar preview-page-nav" wx:if="{{bookPages.length > 0 && editorMode === 'preview'}}">
+    <scroll-view scroll-x class="dots-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="dots-row">
+        <view
+          class="page-dot {{currentPageIndex === index ? 'active' : ''}}"
+          wx:for="{{bookPages}}"
+          wx:key="id"
+          bindtap="onTapPageDot"
+          data-index="{{index}}"
+          hover-class="soft-hover-scale"
+          hover-stay-time="80"
+          aria-label="跳转到第 {{index + 1}} 页"
+        >
+          {{index + 1}}
+        </view>
+      </view>
+    </scroll-view>
   </view>
 
   <view class="floating-tool-dock" wx:if="{{editorMode === 'edit'}}" style="{{toolDockTopStyle}}">

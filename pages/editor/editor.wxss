@@ -3504,3 +3504,130 @@
   bottom: 24rpx;
   background: rgba(245, 216, 137, 0.9);
 }
+
+/* ===== v1.1.0 layout correction: full workspace + anchored tool panels ===== */
+.editor-page {
+  height: 100vh;
+  min-height: 100vh;
+}
+
+.canvas-wrapper {
+  position: relative;
+  min-height: 0;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.edit-mode .canvas-wrapper {
+  padding: 6rpx 6rpx calc(210rpx + env(safe-area-inset-bottom));
+}
+
+.preview-mode .canvas-wrapper {
+  padding: 6rpx 10rpx calc(96rpx + env(safe-area-inset-bottom));
+}
+
+.page-shell {
+  flex: 0 0 auto;
+  padding: 4rpx;
+  border-radius: 14rpx;
+  box-sizing: border-box;
+}
+
+.canvas-container.paper-canvas {
+  border-radius: 10rpx;
+}
+
+.preview-page-nav {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  bottom: calc(18rpx + env(safe-area-inset-bottom));
+  width: auto;
+  max-width: calc(100vw - 36rpx);
+  padding: 10rpx 12rpx;
+  border: 1rpx solid #eadccf;
+  border-radius: 24rpx;
+  background: rgba(255, 253, 248, 0.98);
+  box-shadow: 0 14rpx 34rpx rgba(122, 86, 58, 0.16);
+  transform: translateX(-50%);
+  z-index: 30;
+  box-sizing: border-box;
+}
+
+.preview-page-nav .dots-scroll {
+  max-width: calc(100vw - 62rpx);
+  white-space: nowrap;
+}
+
+.preview-page-nav .dots-row {
+  justify-content: flex-start;
+  gap: 10rpx;
+  padding: 0;
+}
+
+.preview-page-nav .page-dot {
+  width: 40rpx;
+  height: 40rpx;
+  flex: 0 0 40rpx;
+  font-size: 18rpx;
+  background: #fffaf2;
+  border-color: #eadccf;
+  color: #9a8678;
+  box-shadow: none;
+}
+
+.preview-page-nav .page-dot.active {
+  background: #d98eaa;
+  border-color: #d98eaa;
+  color: #fffdf8;
+  box-shadow: 0 7rpx 16rpx rgba(217, 142, 170, 0.24);
+}
+
+.floating-tool-dock {
+  z-index: 31;
+}
+
+.edit-page-nav {
+  z-index: 30;
+}
+
+.edit-mode .panel {
+  left: 18rpx;
+  right: 18rpx;
+  bottom: calc(202rpx + env(safe-area-inset-bottom));
+  max-height: 52vh;
+  border: 1rpx solid #eadccf;
+  border-radius: 24rpx;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(calc(100% + 26rpx));
+  z-index: 29;
+  overflow: hidden;
+}
+
+.edit-mode .panel.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.edit-mode .panel-mask {
+  bottom: calc(198rpx + env(safe-area-inset-bottom));
+  z-index: 24;
+}
+
+.edit-mode .panel-header {
+  flex: 0 0 auto;
+  padding: 20rpx 22rpx 14rpx;
+}
+
+.edit-mode .panel-scroll,
+.edit-mode .panel-body {
+  min-height: 0;
+  max-height: calc(52vh - 82rpx);
+  overflow-y: auto;
+  padding: 18rpx 22rpx 22rpx;
+  box-sizing: border-box;
+}

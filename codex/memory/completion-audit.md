@@ -34,7 +34,7 @@
 - `assets/icons` 中不再含 `currentColor`，图标本体使用固定暖棕色；`currentColor` 仅剩于 WXSS 的画笔粗细预览条，不影响 `<image>` 图标可见性。
 - `app.json` TabBar 使用暖纸色背景、暖棕未选中和玫瑰粉选中；`images/tab-*.png` 六个线条图标文件存在。
 - 手绘工作台为全屏结构：顶部关闭/标题/撤销/重做/完成，下方四项工具为选择贴纸、画笔颜色、画笔粗细、工具；`draw-board` 内 canvas 以真实容器尺寸初始化并绝对铺满。
-- 编辑模式下底部页码条隐藏，预览模式显示；页码条不再混入加页/删页按钮，编辑态加页/删页在更多菜单中。
+- 历史审计曾证明“编辑态隐藏页码、预览态显示”的旧结构；该结构现已废弃，不再作为当前完成证据。
 - 图片更多菜单含“裁切”，裁切后替换图片、生成唯一贴纸并清理旧贴纸；删页/删元素/清空页会回收页面独有贴纸，封面图删除会清掉 `book.coverImage`。
 - 静态验证已通过：`node --check` 覆盖 `editor.js`/`storage.js`；微信开发者工具 `wcc`/`wcsc -lc` 编译当前 WXML/WXSS；编辑页 35 个直接本地静态资源引用均存在；9 个 JSON 文件可解析；storage mock 证明删页会清理图片贴纸记录。
 - 新增 `scripts/verify-editor-ui.js` 将上述 UI/手绘/贴纸约束固化为 41 项自动检查，当前 `node scripts/verify-editor-ui.js` 通过。
@@ -52,7 +52,7 @@
 
 ### 已被当前证据证明
 - 编辑模式底部页面管理条已显示在 `editorMode === 'edit'` 下，包含上一页、当前页/总页数、下一页、添加页、删除页；WXML 中不再有页码圆点循环。
-- 预览模式不再显示底部页面管理条。
+- 此项是 2026-06-17 阶段证据，已被 2026-06-18 用户要求推翻；当前预览必须显示独立小圆点页码。
 - 删除页按钮使用禁用占位逻辑：`bookPages.length <= 1 || isCoverPage`，避免封面页和普通页按钮位置不一致。
 - 图片裁切不再调用 `wx.cropImage`，而是打开 `_openImageCropPanel()`，确认后保存 `cropMode: 'cover'`、`cropOffsetX`、`cropOffsetY`；裁切后的图片不会生成额外贴纸文件。
 - “复制样式/粘贴样式”入口及 JS 操作函数已移除。
@@ -66,3 +66,17 @@
 - 可逆裁切面板的真实拖动手感、撤销/重做和再次调整体验。
 - 手绘下半区连续绘制、底部三工具弹层、完成保存的真实触摸表现。
 - 删除封面图后重进手账本、添加图片后删页再看贴纸库等完整用户路径仍需 GUI/真机确认。
+
+## 2026-06-18 编辑/预览布局修正完成度审计
+
+### 已被当前证据证明
+- `editor.wxml` 同时存在两个互斥组件：编辑态 `edit-page-nav` 包含页数、左右翻页、加页和删页；预览态 `preview-page-nav` 循环 `bookPages` 生成可点击页码圆点，并绑定 `onTapPageDot`。
+- 预览圆点组件不包含 `addNewPage` 或 `deleteCurrentPage`，编辑页管理条不包含小圆点循环。
+- 画布逻辑高度已从 `920` 增至 `1120`；显示尺寸由 `_fitCanvasToViewport()` 按窗口、安全区、顶部栏和底部控件保留空间等比计算，WXML 不再直接用逻辑尺寸作为固定显示尺寸。
+- 工具面板最终样式为 `bottom: calc(202rpx + env(safe-area-inset-bottom))`、`z-index: 29`；主工具栏为 `z-index: 31`，页面管理条为 `z-index: 30`，面板及遮罩不会覆盖底部两组控件。
+- `node scripts/verify-editor-ui.js` 通过 57 项检查，`node scripts/verify-editor-layout.js` 通过 4 组视口检查，`node scripts/verify-sticker-lifecycle.js` 通过 9 项检查；相关 `node --check` 与 `git diff --check` 均通过。
+
+### 尚未被当前证据证明
+- 微信开发者工具模拟器/真机中，`690×1120` 长页在不同屏幕比例下的最终视觉占用是否完全符合用户主观预期。
+- 工具面板打开后切换另一工具、滚动长内容、唤起文字键盘时的真实触摸和遮挡表现。
+- 预览圆点在很多页面时的横向滚动、当前页高亮和点击跳转触感。
