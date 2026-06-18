@@ -286,8 +286,7 @@
 - [x] `node scripts/verify-editor-layout.js`：紧凑手机、长屏手机编辑/预览、宽屏设备共 4 组视口检查通过。
 - [x] `node scripts/verify-sticker-lifecycle.js`：通过 9 项检查。
 - [x] `git diff --check`：无尾随空白错误。
-- [x] 微信开发者工具内置 `wcc` 编译 `pages/editor/editor.wxml` 通过。
-- [x] 微信开发者工具内置 `wcsc` 编译 `pages/editor/editor.wxss` 通过。
+- [x] 当前有效验证口径仅保留 Node 自动检查与 Git diff 检查；微信开发者工具命令已按用户要求停用。
 
 ### 待完成
 - [ ] GUI/真机确认长页画布在常见手机比例上的最终占用与触摸坐标。
@@ -296,4 +295,4 @@
 - [ ] GUI/真机验证由用户手动完成并反馈；Codex 后续不得调用微信开发者工具命令。
 
 ### Git 提交记录
-- 待提交：`v1.1.0` 编辑/预览布局二次修正提交到 `dev`。
+- `89904bf` - `fix: 修正编辑画布与预览页码布局`，已提交到 `dev`，待推送到 `origin/dev`。
