@@ -60,6 +60,9 @@
     <view class="sel-btn" wx:if="{{selectedElement.type === 'decoration' && selectedElement.fillImage}}" bindtap="showFillImagePositionPanel" hover-class="soft-hover" hover-stay-time="80" data-tooltip="移动图片">
       <image class="ui-icon" src="/assets/icons/move.svg" mode="aspectFit" />
     </view>
+    <view class="sel-btn" wx:if="{{selectedElement.type === 'image' && selectedElement.cropMode === 'cover'}}" bindtap="cropSelectedImage" hover-class="soft-hover" hover-stay-time="80" data-tooltip="调整裁切">
+      <image class="ui-icon" src="/assets/icons/move.svg" mode="aspectFit" />
+    </view>
     <view class="sel-btn {{selectedElement.locked ? 'active' : ''}}" bindtap="toggleSelectedLock" hover-class="soft-hover" hover-stay-time="80" data-tooltip="{{selectedElement.locked ? '解锁' : '锁定'}}">
       <image class="ui-icon" src="{{selectedElement.locked ? '/assets/icons/unlock.svg' : '/assets/icons/lock.svg'}}" mode="aspectFit" />
     </view>
@@ -95,7 +98,7 @@
     </view>
   </view>
 
-  <view class="page-dots-bar" wx:if="{{bookPages.length > 0 && editorMode === 'preview'}}">
+  <view class="page-dots-bar edit-page-nav" wx:if="{{bookPages.length > 0 && editorMode === 'edit'}}">
     <view class="page-nav-controls">
       <view class="page-nav-btn {{currentPageIndex <= 0 ? 'disabled' : ''}}" bindtap="onTapPrevPage" hover-class="soft-hover" hover-stay-time="80" aria-label="上一页">
         <image class="ui-icon" src="/assets/icons/chevron-left.svg" mode="aspectFit" />
@@ -108,14 +111,14 @@
       <view class="page-nav-btn {{currentPageIndex >= bookPages.length - 1 ? 'disabled' : ''}}" bindtap="onTapNextPage" hover-class="soft-hover" hover-stay-time="80" aria-label="下一页">
         <image class="ui-icon" src="/assets/icons/chevron-right.svg" mode="aspectFit" />
       </view>
-    </view>
-    <scroll-view scroll-x class="dots-scroll" enhanced show-scrollbar="{{false}}">
-      <view class="dots-row">
-        <view class="page-dot {{currentPageIndex === index ? 'active' : ''}}" wx:for="{{bookPages}}" wx:key="id" data-index="{{index}}" bindtap="onTapPageDot">
-          {{index + 1}}
-        </view>
+      <view class="page-nav-divider"></view>
+      <view class="page-nav-btn page-nav-add" bindtap="addNewPage" hover-class="soft-hover" hover-stay-time="80" aria-label="添加页面">
+        <image class="ui-icon" src="/assets/icons/plus.svg" mode="aspectFit" />
       </view>
-    </scroll-view>
+      <view class="page-nav-btn page-nav-delete {{bookPages.length <= 1 || isCoverPage ? 'disabled' : ''}}" bindtap="deleteCurrentPage" hover-class="soft-hover" hover-stay-time="80" aria-label="删除页面">
+        <image class="ui-icon" src="/assets/icons/trash-2.svg" mode="aspectFit" />
+      </view>
+    </view>
   </view>
 
   <view class="floating-tool-dock" wx:if="{{editorMode === 'edit'}}" style="{{toolDockTopStyle}}">
@@ -231,17 +234,6 @@
       </view>
     </view>
 
-    <view class="draw-popover draw-sticker-popover {{showDrawStickerShelf ? 'show' : ''}}">
-      <scroll-view scroll-x class="draw-sticker-scroll" enhanced show-scrollbar="{{false}}">
-        <view class="draw-sticker-list" wx:if="{{stickers.length > 0}}">
-          <view class="draw-sticker-pick" wx:for="{{stickers}}" wx:key="id" bindtap="addStickerToDrawCanvas" data-id="{{item.id}}" hover-class="soft-hover" hover-stay-time="80">
-            <image src="{{item.src}}" mode="aspectFit" />
-          </view>
-        </view>
-        <view class="draw-sticker-empty" wx:else>素材库暂无贴纸</view>
-      </scroll-view>
-    </view>
-
     <view class="draw-popover draw-color-popover {{showDrawColorPanel ? 'show' : ''}}">
       <view class="draw-popover-title">画笔颜色</view>
       <view class="draw-color-list">
@@ -260,10 +252,6 @@
     </view>
 
     <view class="draw-bottom-toolbar">
-      <view class="draw-tool-tab {{showDrawStickerShelf ? 'active' : ''}}" bindtap="toggleDrawStickerShelf" hover-class="soft-hover" hover-stay-time="80">
-        <image class="draw-tool-icon" src="/assets/icons/sticker.svg" mode="aspectFit" />
-        <text>选择贴纸</text>
-      </view>
       <view class="draw-tool-tab {{showDrawColorPanel ? 'active' : ''}}" bindtap="toggleDrawColorPanel" hover-class="soft-hover" hover-stay-time="80">
         <view class="draw-current-color" style="background: {{drawColor}};"></view>
         <text>画笔颜色</text>
@@ -510,7 +498,7 @@
   <!-- 填充图片拖拽调整位置 -->
   <view class="fill-image-drag-modal {{showFillImagePanel ? 'show' : ''}}" catchtap="stopPropagation">
     <view class="fidm-header">
-      <text class="fidm-title">拖动图片调整位置</text>
+      <text class="fidm-title">{{fillImagePanelTitle}}</text>
       <view class="fidm-close" bindtap="closeFillImagePanel" hover-class="soft-hover" hover-stay-time="80">
         <image class="ui-icon" src="/assets/icons/x.svg" mode="aspectFit" />
       </view>
@@ -557,7 +545,14 @@
       </view>
       <view class="template-card" wx:for="{{templates}}" wx:key="id" bindtap="onTapTemplate" data-id="{{item.id}}">
           <view class="template-preview" style="background: {{item.background || '#fdf9ef'}};">
-            <view class="template-lines"></view>
+          <view class="template-tape"></view>
+          <view class="template-title-line"></view>
+          <view class="template-photo-mark"></view>
+          <view class="template-lines"></view>
+          <view class="template-note-line line-a"></view>
+          <view class="template-note-line line-b"></view>
+          <view class="template-dot dot-a"></view>
+          <view class="template-dot dot-b"></view>
           </view>
           <text class="template-name">{{item.name}}</text>
         </view>

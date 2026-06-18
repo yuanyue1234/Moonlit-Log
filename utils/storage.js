@@ -95,6 +95,21 @@ function clearBookCoverImage(bookId, src = '') {
   if (src && books[index].coverImage && books[index].coverImage !== src) return books[index]
   books[index] = { ...books[index], coverImage: '', updatedAt: Date.now() }
   saveBooks(books)
+  const pages = wx.getStorageSync(STORAGE_KEYS.PAGES) || []
+  const coverIndex = pages.findIndex(page => page.bookId === bookId && page.role === 'cover')
+  if (coverIndex >= 0) {
+    const cover = pages[coverIndex]
+    pages[coverIndex] = {
+      ...cover,
+      elements: normalizePageElements((cover.elements || []).filter(el => {
+        if (!el || el.type !== 'image') return true
+        if (src && el.src !== src) return true
+        return el.systemRole !== 'cover-fixed'
+      })),
+      updatedAt: Date.now()
+    }
+    savePages(pages)
+  }
   return books[index]
 }
 

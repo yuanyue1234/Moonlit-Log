@@ -3271,3 +3271,236 @@
   width: 100%;
   height: 100%;
 }
+
+/* ===== v1.1.0 editor surface: canvas-first edit mode ===== */
+.editor-page,
+.draw-workspace {
+  background:
+    linear-gradient(90deg, rgba(168, 143, 128, 0.08) 1rpx, transparent 1rpx) 0 0 / 34rpx 34rpx,
+    linear-gradient(0deg, rgba(168, 143, 128, 0.08) 1rpx, transparent 1rpx) 0 0 / 34rpx 34rpx,
+    #fff7ed;
+}
+
+.top-bar {
+  min-height: 76rpx;
+  padding: 8rpx 16rpx;
+}
+
+.page-hint {
+  display: none;
+}
+
+.icon-btn {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 16rpx;
+}
+
+.mode-toggle {
+  min-width: 104rpx;
+  height: 52rpx;
+  border-radius: 16rpx;
+  font-size: 21rpx;
+}
+
+.edit-mode .canvas-wrapper {
+  padding: 8rpx 8rpx calc(214rpx + env(safe-area-inset-bottom));
+  background:
+    linear-gradient(90deg, rgba(168, 143, 128, 0.08) 1rpx, transparent 1rpx) 0 0 / 34rpx 34rpx,
+    linear-gradient(0deg, rgba(168, 143, 128, 0.08) 1rpx, transparent 1rpx) 0 0 / 34rpx 34rpx,
+    #fff7ed;
+}
+
+.preview-mode .canvas-wrapper {
+  padding: 18rpx 12rpx;
+}
+
+.page-shell {
+  padding: 8rpx;
+  border-radius: 18rpx;
+}
+
+.selection-toolbar {
+  max-width: calc(100vw - 32rpx);
+  overflow: hidden;
+}
+
+.floating-tool-dock {
+  top: auto !important;
+  left: 18rpx;
+  right: 18rpx;
+  bottom: calc(104rpx + env(safe-area-inset-bottom));
+  padding: 8rpx;
+  border-radius: 24rpx;
+  z-index: 23;
+}
+
+.floating-tool-dock .tool-btn {
+  min-height: 72rpx;
+  padding: 6rpx 2rpx;
+}
+
+.floating-tool-dock .tool-btn text {
+  font-size: 18rpx;
+}
+
+.floating-tool-dock .tool-btn .ui-icon {
+  width: 34rpx;
+  height: 34rpx;
+}
+
+.edit-page-nav {
+  position: fixed;
+  left: 18rpx;
+  right: 18rpx;
+  bottom: calc(18rpx + env(safe-area-inset-bottom));
+  z-index: 22;
+  padding: 8rpx;
+  border: 1rpx solid #eadccf;
+  border-radius: 24rpx;
+  background: rgba(255, 253, 248, 0.98);
+  box-shadow: 0 16rpx 40rpx rgba(122, 86, 58, 0.16);
+  backdrop-filter: blur(22rpx);
+  -webkit-backdrop-filter: blur(22rpx);
+}
+
+.edit-page-nav .page-nav-controls {
+  justify-content: space-between;
+  gap: 8rpx;
+  padding: 0;
+  border-bottom: none;
+}
+
+.edit-page-nav .page-nav-btn {
+  width: 62rpx;
+  height: 62rpx;
+  border-radius: 18rpx;
+  flex: 0 0 62rpx;
+}
+
+.edit-page-nav .page-nav-info {
+  min-width: 116rpx;
+  justify-content: center;
+  padding: 0 10rpx;
+}
+
+.edit-page-nav .page-nav-divider {
+  width: 1rpx;
+  height: 42rpx;
+  background: #eadccf;
+  flex: 0 0 1rpx;
+}
+
+.edit-page-nav .page-nav-add {
+  background: #fdeaf1;
+  border-color: #eab8c8;
+}
+
+.edit-page-nav .page-nav-delete {
+  background: #fffaf2;
+  border-color: #eadccf;
+}
+
+.edit-page-nav .page-nav-delete:not(.disabled) {
+  color: #c24135;
+  border-color: rgba(194, 65, 53, 0.24);
+}
+
+.draw-board {
+  margin: 6rpx 20rpx 138rpx;
+}
+
+.draw-bottom-toolbar {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-height: 108rpx;
+  border-radius: 24rpx;
+}
+
+.draw-tool-tab {
+  min-height: 82rpx;
+  background: #fffdf8;
+  border-color: #eadccf;
+  color: #4b3930;
+}
+
+.draw-tool-tab text {
+  color: #6f574c;
+}
+
+.draw-tool-tab.active {
+  background: #d98eaa;
+  border-color: #d98eaa;
+}
+
+.template-preview {
+  overflow: hidden;
+}
+
+.template-tape {
+  position: absolute;
+  top: 18rpx;
+  left: 18rpx;
+  width: 82rpx;
+  height: 20rpx;
+  border-radius: 6rpx;
+  background: rgba(217, 142, 170, 0.42);
+  transform: rotate(-7deg);
+}
+
+.template-title-line {
+  position: absolute;
+  top: 48rpx;
+  left: 22rpx;
+  right: 34rpx;
+  height: 8rpx;
+  border-radius: 999rpx;
+  background: rgba(75, 57, 48, 0.24);
+}
+
+.template-photo-mark {
+  position: absolute;
+  left: 24rpx;
+  right: 24rpx;
+  top: 78rpx;
+  height: 96rpx;
+  border: 2rpx dashed rgba(168, 143, 128, 0.46);
+  border-radius: 14rpx;
+  background: rgba(255, 253, 248, 0.5);
+}
+
+.template-note-line {
+  position: absolute;
+  left: 28rpx;
+  right: 28rpx;
+  height: 5rpx;
+  border-radius: 999rpx;
+  background: rgba(75, 57, 48, 0.18);
+}
+
+.template-note-line.line-a {
+  bottom: 50rpx;
+}
+
+.template-note-line.line-b {
+  bottom: 32rpx;
+  right: 70rpx;
+}
+
+.template-dot {
+  position: absolute;
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: rgba(168, 220, 201, 0.86);
+}
+
+.template-dot.dot-a {
+  right: 24rpx;
+  top: 28rpx;
+}
+
+.template-dot.dot-b {
+  left: 26rpx;
+  bottom: 24rpx;
+  background: rgba(245, 216, 137, 0.9);
+}

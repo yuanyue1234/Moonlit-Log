@@ -121,7 +121,9 @@
   <!-- 贴纸预览 - 全屏样式 -->
   <view class="preview-mask {{showPreview ? 'show' : ''}}" bindtap="closePreview">
     <view class="preview-container" catchtap="stopPropagation" wx:if="{{showPreview && previewSticker}}">
-      <image src="{{previewSticker.src}}" mode="aspectFit" class="preview-image effect-{{previewSticker.effect || 'none'}}" lazy-load="{{false}}" show-menu-by-longpress="{{false}}" />
+      <view class="preview-image-stage">
+        <image src="{{previewSticker.src}}" mode="aspectFit" class="preview-image effect-{{previewSticker.effect || 'none'}}" lazy-load="{{false}}" show-menu-by-longpress="{{false}}" />
+      </view>
 
       <!-- 关闭按钮 - 在信息栏上方 -->
       <view class="preview-close" bindtap="closePreview">关闭</view>

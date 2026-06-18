@@ -47,3 +47,22 @@
 - `wx.cropImage` 在当前目标基础库/真机中是否可打开裁切界面并返回结果；当前代码有不支持时的 toast fallback。
 - 删除封面图后回到首页再重新进入手账本、添加图片后删页再查看贴纸库等完整用户流程仍需 GUI/真机回归确认。
 - 正常用户环境下微信开发者工具 CLI 帮助可用，但 `preview --project ... --port 9421` 180 秒未返回且未生成二维码/信息文件；`auto --project ... --port 9421 --trust-project` 60 秒未返回且端口无监听；两次残留进程均已清理。CLI preview/auto 仍不能提供完成证据。
+
+## 2026-06-17 v1.1.0 完成度审计
+
+### 已被当前证据证明
+- 编辑模式底部页面管理条已显示在 `editorMode === 'edit'` 下，包含上一页、当前页/总页数、下一页、添加页、删除页；WXML 中不再有页码圆点循环。
+- 预览模式不再显示底部页面管理条。
+- 删除页按钮使用禁用占位逻辑：`bookPages.length <= 1 || isCoverPage`，避免封面页和普通页按钮位置不一致。
+- 图片裁切不再调用 `wx.cropImage`，而是打开 `_openImageCropPanel()`，确认后保存 `cropMode: 'cover'`、`cropOffsetX`、`cropOffsetY`；裁切后的图片不会生成额外贴纸文件。
+- “复制样式/粘贴样式”入口及 JS 操作函数已移除。
+- 手绘底部工具栏已移除贴纸选择，保留颜色、粗细、工具三项；`draw-board` 真实尺寸初始化和 canvas 铺满仍保留。
+- 贴纸详情预览已加入 `.preview-image-stage` 格纹底；模板页为三列紧凑布局。
+- `clearBookCoverImage()` 会同步删除封面页中对应的系统封面图片元素。
+- 静态验证已通过：`node scripts/verify-editor-ui.js` 49 项、`node scripts/verify-sticker-lifecycle.js` 9 项、相关 `node --check`、`git diff --check`、微信开发者工具 `wcc`/`wcsc` 编译改动文件。
+
+### 尚未被当前证据证明
+- 微信开发者工具 GUI/真机中，编辑底部页面管理条和工具 dock 是否遮挡页面或影响触摸。
+- 可逆裁切面板的真实拖动手感、撤销/重做和再次调整体验。
+- 手绘下半区连续绘制、底部三工具弹层、完成保存的真实触摸表现。
+- 删除封面图后重进手账本、添加图片后删页再看贴纸库等完整用户路径仍需 GUI/真机确认。

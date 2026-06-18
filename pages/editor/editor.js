@@ -100,7 +100,6 @@ Page({
     elements: [],
     selectedId: null,
     selectedElement: null,
-    copiedStyleType: '',
     showSelectedMorePanel: false,
     selectedMoreTitle: '',
     selectedMoreActions: [],
@@ -195,6 +194,7 @@ Page({
     // 填充图片位置调整面板
     showFillImagePanel: false,
     fillImageDragReady: false,
+    fillImagePanelTitle: '拖动图片调整位置',
     borderColor: '#D8B6A5',
     borderWidth: 2,
     borderStyle: 'solid',
@@ -753,6 +753,10 @@ Page({
         } else {
           drawW = h * imgRatio
         }
+        if (el.cropMode === 'cover') {
+          this._drawImageCoverCrop(ctx, el, cached, w, h)
+          return 'ok'
+        }
         const imageDrawnByEffect = imageEffect.drawImageEffect(ctx, el.src, cached.img, -drawW / 2, -drawH / 2, drawW, drawH, el.effect || 'none')
         if (!imageDrawnByEffect) ctx.drawImage(cached.img, -drawW/2, -drawH/2, drawW, drawH)
       } catch (e) {
@@ -764,6 +768,59 @@ Page({
     // 图片未加载，显示占位符并返回 pending
     this._drawPlaceholder(ctx, w, h, 'WAIT')
     return 'pending'
+  },
+
+  _drawImageCoverCrop(ctx, el, cached, w, h) {
+    const iw = cached.width || 1
+    const ih = cached.height || 1
+    const scale = Math.max(w / iw, h / ih)
+    const sw = iw * scale
+    const sh = ih * scale
+    const offsetX = el.cropOffsetX || 0
+    const offsetY = el.cropOffsetY || 0
+    const maxDx = Math.max(0, (sw - w) / 2)
+    const maxDy = Math.max(0, (sh - h) / 2)
+    const dx = -(sw - w) / 2 - w / 2 + offsetX * maxDx / 100
+    const dy = -(sh - h) / 2 - h / 2 + offsetY * maxDy / 100
+    const effect = el.effect || 'none'
+    const radius = Math.max(8, Math.min(w, h) * 0.035)
+
+    if (effect === 'photo-frame') {
+      const pad = Math.max(8, Math.min(w, h) * 0.055)
+      const bottom = Math.max(16, Math.min(w, h) * 0.12)
+      ctx.save()
+      ctx.shadowColor = 'rgba(122,86,58,0.18)'
+      ctx.shadowBlur = Math.max(10, pad * 1.4)
+      ctx.shadowOffsetY = Math.max(5, pad * 0.8)
+      ctx.fillStyle = '#fffdf8'
+      this._roundRect(ctx, -w / 2 - pad, -h / 2 - pad, w + pad * 2, h + pad + bottom, radius + pad * 0.45)
+      ctx.fill()
+      ctx.restore()
+    } else if (effect === 'shadow' || effect === 'paper' || effect === 'white-border') {
+      ctx.save()
+      ctx.shadowColor = effect === 'white-border' ? 'rgba(0,0,0,0.16)' : 'rgba(44,35,25,0.24)'
+      ctx.shadowBlur = effect === 'white-border' ? 8 : 18
+      ctx.shadowOffsetY = effect === 'white-border' ? 4 : 9
+      ctx.fillStyle = 'rgba(255,253,248,0.01)'
+      this._roundRect(ctx, -w / 2, -h / 2, w, h, radius)
+      ctx.fill()
+      ctx.restore()
+    }
+
+    ctx.save()
+    this._roundRect(ctx, -w / 2, -h / 2, w, h, radius)
+    ctx.clip()
+    ctx.drawImage(cached.img, dx, dy, sw, sh)
+    ctx.restore()
+
+    if (effect === 'photo-frame' || effect === 'paper' || effect === 'white-border') {
+      ctx.save()
+      ctx.strokeStyle = effect === 'white-border' ? '#ffffff' : effect === 'paper' ? '#fff7e8' : 'rgba(168,143,128,0.28)'
+      ctx.lineWidth = effect === 'photo-frame' ? 2 : Math.max(4, Math.min(w, h) * 0.035)
+      this._roundRect(ctx, -w / 2, -h / 2, w, h, radius)
+      ctx.stroke()
+      ctx.restore()
+    }
   },
 
   _drawPlaceholder(ctx, w, h, icon) {
@@ -2672,81 +2729,6 @@ Page({
     })
   },
 
-  _getElementStylePayload(el) {
-    if (!el) return null
-    if (el.type === 'image') {
-      return { type: 'image', style: { effect: el.effect || 'none' } }
-    }
-    if (el.type === 'text') {
-      return {
-        type: 'text',
-        style: {
-          color: el.color || this.data.textColor,
-          fontSize: el.fontSize || this.data.textSize,
-          fontFamily: el.fontFamily || this.data.textFontFamily
-        }
-      }
-    }
-    if (el.type === 'decoration') {
-      const style = {}
-      ;[
-        'color',
-        'bgColor',
-        'borderColor',
-        'style',
-        'shapeType',
-        'fillColor',
-        'strokeColor',
-        'strokeWidth',
-        'lineStyle',
-        'borderRadius',
-        'textColor',
-        'textFontSize',
-        'textFontFamily',
-        'textAlign',
-        'textVertical'
-      ].forEach(key => {
-        if (el[key] !== undefined) style[key] = el[key]
-      })
-      if (el.border) style.border = JSON.parse(JSON.stringify(el.border))
-      return { type: 'decoration', subType: el.subType, style }
-    }
-    return null
-  },
-
-  copySelectedStyle() {
-    const el = this._getSelectedElement()
-    const payload = this._getElementStylePayload(el)
-    if (!payload) {
-      wx.showToast({ title: '当前元素没有可复制样式', icon: 'none', duration: 1000 })
-      return
-    }
-    this.copiedElementStyle = payload
-    this.setData({ copiedStyleType: payload.type })
-    wx.showToast({ title: '已复制样式', icon: 'none', duration: 800 })
-  },
-
-  pasteSelectedStyle() {
-    const el = this._getSelectedElement()
-    const payload = this.copiedElementStyle
-    if (!el || !payload) {
-      wx.showToast({ title: '暂无可粘贴样式', icon: 'none', duration: 1000 })
-      return
-    }
-    if (el.locked) {
-      wx.showToast({ title: '已锁定，先解锁再粘贴', icon: 'none', duration: 1000 })
-      return
-    }
-    if (payload.type !== el.type || (payload.subType && el.subType !== payload.subType)) {
-      wx.showToast({ title: '样式类型不匹配', icon: 'none', duration: 1000 })
-      return
-    }
-    this._updateElement(el.id, payload.style)
-    this.pushHistory()
-    this.renderCanvas()
-    wx.showToast({ title: '已粘贴样式', icon: 'none', duration: 800 })
-  },
-
   openSelectedMoreMenu() {
     const el = this._getSelectedElement()
     if (!el) return
@@ -2780,9 +2762,7 @@ Page({
         { key: 'effect-photo-frame', label: '相框', icon: '/assets/icons/photo-frame.svg' },
         { key: 'effect-white-border', label: '白边', icon: '/assets/icons/sticker.svg' },
         { key: 'effect-paper', label: '纸贴', icon: '/assets/icons/file-text.svg' },
-        { key: 'effect-shadow', label: '阴影', icon: '/assets/icons/layers.svg' },
-        { key: 'copy-style', label: '复制样式', icon: '/assets/icons/copy.svg' },
-        { key: 'paste-style', label: '粘贴样式', icon: '/assets/icons/clipboard.svg' }
+        { key: 'effect-shadow', label: '阴影', icon: '/assets/icons/layers.svg' }
       ]
     }
 
@@ -2791,8 +2771,6 @@ Page({
       return [
         { key: 'rect-text', label: textLabel, icon: '/assets/icons/type.svg' },
         { key: 'rect-image', label: '添加图片', icon: '/assets/icons/image-plus.svg' },
-        { key: 'copy-style', label: '复制样式', icon: '/assets/icons/copy.svg' },
-        { key: 'paste-style', label: '粘贴样式', icon: '/assets/icons/clipboard.svg' },
         { key: 'border-toggle', label: el.border ? '移除边框' : '添加边框', icon: '/assets/icons/square.svg' },
         { key: 'bring-front', label: '置顶', icon: '/assets/icons/layers.svg' }
       ]
@@ -2801,9 +2779,7 @@ Page({
     return [
       { key: 'bring-front', label: '置顶', icon: '/assets/icons/layers.svg' },
       { key: 'send-back', label: '置底', icon: '/assets/icons/layers.svg' },
-      { key: 'border-toggle', label: el.border ? '移除边框' : '添加边框', icon: '/assets/icons/square.svg' },
-      { key: 'copy-style', label: '复制样式', icon: '/assets/icons/copy.svg' },
-      { key: 'paste-style', label: '粘贴样式', icon: '/assets/icons/clipboard.svg' }
+      { key: 'border-toggle', label: el.border ? '移除边框' : '添加边框', icon: '/assets/icons/square.svg' }
     ]
   },
 
@@ -2839,12 +2815,6 @@ Page({
       case 'rect-image':
         this.fillRectWithImage(el)
         break
-      case 'copy-style':
-        this.copySelectedStyle()
-        break
-      case 'paste-style':
-        this.pasteSelectedStyle()
-        break
       case 'border-toggle':
         el.border ? this.removeBorder() : this.showBorderPanel()
         break
@@ -2857,60 +2827,33 @@ Page({
     }
   },
   cropSelectedImage(el) {
-    const target = el || this._getSelectedElement()
+    const target = el && el.id && el.type ? el : this._getSelectedElement()
     if (!target || target.type !== 'image' || !target.src) return
     if (target.locked) {
       wx.showToast({ title: '已锁定，先解锁再裁切', icon: 'none', duration: 1000 })
       return
     }
-    if (typeof wx.cropImage !== 'function') {
-      wx.showToast({ title: '当前版本不支持裁切', icon: 'none' })
-      return
-    }
+    this._openImageCropPanel(target)
+  },
 
-    wx.cropImage({
-      src: target.src,
-      cropScale: '1:1',
-      success: (res) => {
-        const tempPath = res.tempFilePath || res.filePath
-        if (!tempPath) {
-          wx.showToast({ title: '裁切失败', icon: 'none' })
-          return
-        }
-        fileUtil.persistFile(tempPath, 'crop_' + Date.now()).then(savedSrc => {
-          const current = this._getSelectedElement()
-          if (!current || current.id !== target.id) return
-          const savedSticker = this._savePhotoToStickerLibrary(savedSrc, {
-            source: 'journal-photo',
-            group: '照片',
-            tags: ['照片', '裁切', '手帐素材'],
-            effect: current.effect || 'photo-frame',
-            kind: 'photo',
-            ownerElementId: current.id,
-            uniqueAsset: true
-          })
-          const updates = {
-            src: savedSrc,
-            source: 'journal-photo',
-            stickerAssetId: savedSticker ? savedSticker.id : ''
-          }
-          const nextElements = this.data.elements.map(item => item.id === current.id ? { ...item, ...updates } : item)
-          this._cleanupOwnedStickerForElement(current, nextElements)
-          this._updateElement(current.id, updates)
-          this.pushHistory()
-          this.renderCanvas()
-          wx.showToast({ title: '已裁切图片', icon: 'none' })
-        }).catch(err => {
-          console.error('裁切图片保存失败', err)
-          wx.showToast({ title: '裁切保存失败', icon: 'none' })
-        })
-      },
-      fail: (err) => {
-        if (err && err.errMsg && err.errMsg.indexOf('cancel') !== -1) return
-        console.error('裁切图片失败', err)
-        wx.showToast({ title: '裁切失败', icon: 'none' })
-      }
+  _openImageCropPanel(el) {
+    this._fillImageOldOffsets = {
+      ox: el.cropOffsetX || 0,
+      oy: el.cropOffsetY || 0,
+      cropMode: el.cropMode || ''
+    }
+    this._fillImageDragEl = el
+    this._fillImageDragMode = 'image'
+    this._fillImageDragOffX = el.cropOffsetX || 0
+    this._fillImageDragOffY = el.cropOffsetY || 0
+
+    this.setData({
+      showFillImagePanel: true,
+      fillImageDragReady: false,
+      fillImagePanelTitle: '拖动图片调整裁切'
     })
+
+    wx.nextTick(() => { this._initFillImageDragCanvas() })
   },
   fillRectWithImage(rectEl) {
     wx.chooseMedia({
@@ -2984,10 +2927,15 @@ Page({
       oy: el.fillImageOffsetY || 0
     }
     this._fillImageDragEl = el
+    this._fillImageDragMode = 'rect'
     this._fillImageDragOffX = el.fillImageOffsetX || 0
     this._fillImageDragOffY = el.fillImageOffsetY || 0
 
-    this.setData({ showFillImagePanel: true, fillImageDragReady: false })
+    this.setData({
+      showFillImagePanel: true,
+      fillImageDragReady: false,
+      fillImagePanelTitle: '拖动图片调整位置'
+    })
 
     // 等 canvas 挂载后渲染
     wx.nextTick(() => { this._initFillImageDragCanvas() })
@@ -3014,7 +2962,7 @@ Page({
 
         // 确保图片已加载
         const el = this._fillImageDragEl
-        const src = el.fillImage
+        const src = this._fillImageDragMode === 'image' ? el.src : el.fillImage
         let cached = imageCache.get(src)
         if (!cached || !cached.loaded) {
           // 异步加载
@@ -3035,7 +2983,8 @@ Page({
     const ctx = this._fidmCtx
     const cw = this._fidmW, ch = this._fidmH
     const el = this._fillImageDragEl
-    const cached = imageCache.get(el.fillImage)
+    const src = this._fillImageDragMode === 'image' ? el.src : el.fillImage
+    const cached = imageCache.get(src)
     if (!ctx || !cached || !cached.loaded) return
 
     ctx.clearRect(0, 0, cw, ch)
@@ -3157,12 +3106,19 @@ Page({
     // 应用到元素
     const el = this._fillImageDragEl
     if (el) {
-      this._updateElement(el.id, {
-        fillImageOffsetX: this._fillImageDragOffX,
-        fillImageOffsetY: this._fillImageDragOffY
-      })
+      const updates = this._fillImageDragMode === 'image'
+        ? {
+            cropMode: 'cover',
+            cropOffsetX: this._fillImageDragOffX,
+            cropOffsetY: this._fillImageDragOffY
+          }
+        : {
+            fillImageOffsetX: this._fillImageDragOffX,
+            fillImageOffsetY: this._fillImageDragOffY
+          }
+      this._updateElement(el.id, updates)
       this.setData({
-        selectedElement: { ...el, fillImageOffsetX: this._fillImageDragOffX, fillImageOffsetY: this._fillImageDragOffY }
+        selectedElement: { ...el, ...updates }
       })
       this.pushHistory()
       this.renderCanvas()
@@ -3175,9 +3131,12 @@ Page({
     const el = this._fillImageDragEl
     if (el && this._fillImageOldOffsets) {
       const old = this._fillImageOldOffsets
-      this._updateElement(el.id, { fillImageOffsetX: old.ox, fillImageOffsetY: old.oy })
+      const updates = this._fillImageDragMode === 'image'
+        ? { cropMode: old.cropMode || '', cropOffsetX: old.ox, cropOffsetY: old.oy }
+        : { fillImageOffsetX: old.ox, fillImageOffsetY: old.oy }
+      this._updateElement(el.id, updates)
       this.setData({
-        selectedElement: { ...el, fillImageOffsetX: old.ox, fillImageOffsetY: old.oy }
+        selectedElement: { ...el, ...updates }
       })
       this.renderCanvas()
     }
@@ -3190,8 +3149,9 @@ Page({
     this._fidmCanvas = null
     this._fidmCtx = null
     this._fillImageDragEl = null
+    this._fillImageDragMode = ''
     this._fillImageOldOffsets = null
-    this.setData({ showFillImagePanel: false, fillImageDragReady: false })
+    this.setData({ showFillImagePanel: false, fillImageDragReady: false, fillImagePanelTitle: '拖动图片调整位置' })
   },
   onBorderColor(e) {
     this.setData({ borderColor: e.currentTarget.dataset.color })

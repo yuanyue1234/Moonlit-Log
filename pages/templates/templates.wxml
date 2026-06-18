@@ -30,6 +30,13 @@
         data-id="{{item.id}}"
       >
         <view class="template-preview" style="background: {{item.background || '#1a1a1a'}};">
+          <view class="template-tape"></view>
+          <view class="template-title-line"></view>
+          <view class="template-photo-mark"></view>
+          <view class="template-note-line line-a"></view>
+          <view class="template-note-line line-b"></view>
+          <view class="template-dot dot-a"></view>
+          <view class="template-dot dot-b"></view>
           <view class="template-paper-icon">
             <view class="paper-line line-a"></view>
             <view class="paper-line line-b"></view>
