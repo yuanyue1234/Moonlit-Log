@@ -3646,3 +3646,356 @@
   padding: 18rpx 22rpx 22rpx;
   box-sizing: border-box;
 }
+
+/* v1.2 compact navigation and drawing studio */
+.top-bar {
+  display: grid;
+  grid-template-columns: 64rpx minmax(150rpx, 1fr) auto;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.top-left {
+  min-width: 0;
+}
+
+.top-left .page-info {
+  display: none;
+}
+
+.top-right {
+  gap: 6rpx;
+}
+
+.top-right .icon-btn,
+.top-right .mode-toggle {
+  width: 48rpx;
+  min-width: 48rpx;
+  height: 48rpx;
+  padding: 0;
+  border-radius: 14rpx;
+}
+
+.top-page-nav {
+  min-width: 0;
+  height: 50rpx;
+  display: grid;
+  grid-template-columns: 44rpx minmax(62rpx, 1fr) 44rpx;
+  align-items: center;
+  border: 1rpx solid #eadccf;
+  border-radius: 16rpx;
+  background: #fffdf8;
+  overflow: hidden;
+}
+
+.top-page-btn {
+  width: 44rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.top-page-btn .ui-icon {
+  width: 26rpx;
+  height: 26rpx;
+}
+
+.top-page-btn.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.top-page-count {
+  overflow: hidden;
+  text-align: center;
+  white-space: nowrap;
+  color: #7b665a;
+  font-size: 20rpx;
+  font-variant-numeric: tabular-nums;
+}
+
+.edit-page-nav {
+  left: 50%;
+  right: auto;
+  width: auto;
+  transform: translateX(-50%);
+}
+
+.edit-page-nav .page-nav-controls {
+  justify-content: center;
+}
+
+.draw-workspace {
+  background:
+    linear-gradient(90deg, rgba(168, 143, 128, 0.08) 1rpx, transparent 1rpx) 0 0 / 34rpx 34rpx,
+    linear-gradient(0deg, rgba(168, 143, 128, 0.08) 1rpx, transparent 1rpx) 0 0 / 34rpx 34rpx,
+    #fff7ed;
+}
+
+.draw-topbar {
+  min-height: 92rpx;
+  padding: 12rpx 18rpx;
+}
+
+.draw-title-wrap {
+  align-items: flex-start;
+}
+
+.draw-title {
+  font-size: 30rpx;
+}
+
+.draw-top-btn,
+.draw-ghost-btn {
+  width: 58rpx;
+  height: 58rpx;
+  flex: 0 0 58rpx;
+  border-radius: 16rpx;
+}
+
+.draw-save-btn {
+  height: 58rpx;
+  min-width: 94rpx;
+  border-radius: 16rpx;
+  padding: 0 20rpx;
+}
+
+.draw-board {
+  margin: 6rpx 18rpx calc(18rpx + env(safe-area-inset-bottom)) 112rpx;
+  border-radius: 8rpx;
+}
+
+.draw-side-toolbar {
+  position: absolute;
+  top: 108rpx;
+  left: 18rpx;
+  z-index: 7;
+  width: 76rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  padding: 8rpx;
+  border: 1rpx solid #eadccf;
+  border-radius: 8rpx;
+  background: rgba(255, 253, 248, 0.96);
+  box-shadow: 0 14rpx 32rpx rgba(122, 86, 58, 0.16);
+  box-sizing: border-box;
+}
+
+.draw-icon-tool {
+  width: 58rpx;
+  height: 58rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid transparent;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+}
+
+.draw-icon-tool image {
+  width: 34rpx;
+  height: 34rpx;
+}
+
+.draw-icon-tool.active {
+  background: #d98eaa;
+  border-color: #d98eaa;
+}
+
+.draw-icon-tool.active image {
+  filter: brightness(0) invert(1);
+}
+
+.draw-color-tool.active .draw-current-color {
+  box-shadow: 0 0 0 4rpx #fffdf8;
+}
+
+.draw-parameter-stack {
+  position: absolute;
+  left: 22rpx;
+  bottom: calc(26rpx + env(safe-area-inset-bottom));
+  z-index: 6;
+  width: 68rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.draw-vertical-control {
+  position: relative;
+  width: 68rpx;
+  height: 172rpx;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8rpx;
+  border: 1rpx solid #eadccf;
+  border-radius: 8rpx;
+  background: rgba(255, 253, 248, 0.96);
+  box-shadow: 0 12rpx 28rpx rgba(122, 86, 58, 0.12);
+  box-sizing: border-box;
+}
+
+.draw-vertical-control > image {
+  width: 26rpx;
+  height: 26rpx;
+}
+
+.draw-vertical-slider {
+  position: absolute;
+  left: -52rpx;
+  bottom: 64rpx;
+  width: 170rpx;
+  margin: 0;
+  transform: rotate(-90deg);
+}
+
+.draw-color-popover {
+  left: 104rpx;
+  right: auto;
+  bottom: auto;
+  top: 180rpx;
+  width: 210rpx;
+  padding: 14rpx;
+  border-radius: 8rpx;
+}
+
+.draw-color-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+}
+
+.draw-color-item {
+  width: 50rpx;
+  height: 50rpx;
+  flex: none;
+}
+
+.draw-custom-color {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fffdf8;
+}
+
+.draw-custom-color image {
+  width: 28rpx;
+  height: 28rpx;
+}
+
+.draw-layer-panel {
+  position: absolute;
+  top: 350rpx;
+  left: 104rpx;
+  z-index: 8;
+  display: none;
+  width: 210rpx;
+  padding: 12rpx;
+  border: 1rpx solid #eadccf;
+  border-radius: 8rpx;
+  background: rgba(255, 253, 248, 0.97);
+  box-shadow: 0 16rpx 36rpx rgba(122, 86, 58, 0.18);
+  box-sizing: border-box;
+}
+
+.draw-layer-panel.show {
+  display: block;
+}
+
+.draw-layer-header,
+.draw-layer-row {
+  display: flex;
+  align-items: center;
+}
+
+.draw-layer-header {
+  justify-content: space-between;
+  padding: 4rpx 6rpx 12rpx;
+}
+
+.draw-layer-header > image,
+.draw-layer-add image,
+.draw-layer-delete image {
+  width: 28rpx;
+  height: 28rpx;
+}
+
+.draw-layer-add,
+.draw-layer-delete {
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.draw-layer-row {
+  height: 52rpx;
+  gap: 10rpx;
+  padding: 0 4rpx 0 10rpx;
+  border-radius: 6rpx;
+  color: #7b665a;
+}
+
+.draw-layer-row.active {
+  background: #fdeaf1;
+  color: #b96e8b;
+}
+
+.draw-layer-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.draw-layer-row text {
+  flex: 1;
+  font-size: 20rpx;
+}
+
+.shape-line {
+  width: 72rpx;
+  height: 3rpx;
+  background: #7b665a;
+  transform: rotate(-12deg);
+}
+
+.shape-curve {
+  width: 66rpx;
+  height: 32rpx;
+  border-top: 4rpx solid #7b665a;
+  border-radius: 50%;
+  transform: rotate(-10deg);
+}
+
+.text-component-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  margin: 22rpx 0;
+}
+
+.text-component-btn {
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border: 1rpx solid #eadccf;
+  border-radius: 8rpx;
+  background: #fffdf8;
+  color: #7b665a;
+}
+
+.text-component-btn image {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.color-picker-mask {
+  z-index: 1600;
+}

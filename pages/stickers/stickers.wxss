@@ -581,3 +581,63 @@
   background: #e58a8a;
   color: #fffdf8;
 }
+
+/* Icon-only collection actions */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.header-icon-btn {
+  width: 62rpx;
+  height: 62rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid #eadccf;
+  border-radius: 16rpx;
+  background: #fffdf8;
+  box-shadow: 0 8rpx 20rpx rgba(122, 86, 58, 0.08);
+}
+
+.header-icon-btn.active {
+  background: #d98eaa;
+  border-color: #d98eaa;
+}
+
+.header-action-icon {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.header-icon-btn.active .header-action-icon {
+  filter: brightness(0) invert(1);
+}
+
+.sticker-add-fab {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24rpx + env(safe-area-inset-bottom));
+  z-index: 50;
+  width: 88rpx;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid #d98eaa;
+  border-radius: 50%;
+  background: #d98eaa;
+  box-shadow: 0 18rpx 38rpx rgba(122, 86, 58, 0.24);
+  transform: translateX(-50%);
+}
+
+.sticker-add-icon {
+  width: 38rpx;
+  height: 38rpx;
+  filter: brightness(0) invert(1);
+}
+
+.sticker-list .safe-spacer {
+  height: calc(154rpx + env(safe-area-inset-bottom));
+}

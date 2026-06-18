@@ -10,6 +10,16 @@
       </view>
     </view>
 
+    <view class="top-page-nav" wx:if="{{bookPages.length > 0}}">
+      <view class="top-page-btn {{currentPageIndex <= 0 ? 'disabled' : ''}}" bindtap="onTapPrevPage" hover-class="soft-hover" aria-label="previous page">
+        <image class="ui-icon" src="/assets/icons/chevron-left.svg" mode="aspectFit" />
+      </view>
+      <view class="top-page-count">{{currentPageIndex + 1}} / {{bookPages.length}}</view>
+      <view class="top-page-btn {{currentPageIndex >= bookPages.length - 1 ? 'disabled' : ''}}" bindtap="onTapNextPage" hover-class="soft-hover" aria-label="next page">
+        <image class="ui-icon" src="/assets/icons/chevron-right.svg" mode="aspectFit" />
+      </view>
+    </view>
+
     <view class="top-right">
       <view class="icon-btn {{!canUndo ? 'disabled' : ''}}" bindtap="onTapAction" data-action="undo" hover-class="soft-hover" hover-stay-time="80" aria-label="撤销">
         <image class="ui-icon" src="/assets/icons/undo.svg" mode="aspectFit" />
@@ -17,12 +27,11 @@
       <view class="icon-btn {{!canRedo ? 'disabled' : ''}}" bindtap="onTapAction" data-action="redo" hover-class="soft-hover" hover-stay-time="80" aria-label="重做">
         <image class="ui-icon" src="/assets/icons/redo.svg" mode="aspectFit" />
       </view>
-      <view class="icon-btn" bindtap="toggleMoreMenu" hover-class="soft-hover" hover-stay-time="80" aria-label="更多">
-        <image class="ui-icon" src="/assets/icons/more-horizontal.svg" mode="aspectFit" />
+      <view class="icon-btn" bindtap="onTapAction" data-action="export" hover-class="soft-hover" hover-stay-time="80" aria-label="export page">
+        <image class="ui-icon" src="/assets/icons/download.svg" mode="aspectFit" />
       </view>
-      <view class="mode-toggle {{editorMode === 'preview' ? 'active' : ''}}" bindtap="toggleEditorMode" hover-class="soft-hover" hover-stay-time="80">
+      <view class="mode-toggle {{editorMode === 'preview' ? 'active' : ''}}" bindtap="toggleEditorMode" hover-class="soft-hover" hover-stay-time="80" aria-label="toggle preview">
         <image class="ui-icon" src="{{editorMode === 'preview' ? '/assets/icons/edit-3.svg' : '/assets/icons/book-open.svg'}}" mode="aspectFit" />
-        <text>{{editorMode === 'preview' ? '编辑' : '预览'}}</text>
       </view>
     </view>
   </view>
@@ -100,18 +109,6 @@
 
   <view class="page-dots-bar edit-page-nav" wx:if="{{bookPages.length > 0 && editorMode === 'edit'}}">
     <view class="page-nav-controls">
-      <view class="page-nav-btn {{currentPageIndex <= 0 ? 'disabled' : ''}}" bindtap="onTapPrevPage" hover-class="soft-hover" hover-stay-time="80" aria-label="上一页">
-        <image class="ui-icon" src="/assets/icons/chevron-left.svg" mode="aspectFit" />
-      </view>
-      <view class="page-nav-info">
-        <text class="page-nav-current">{{currentPageIndex + 1}}</text>
-        <text class="page-nav-separator">/</text>
-        <text class="page-nav-total">{{bookPages.length}}</text>
-      </view>
-      <view class="page-nav-btn {{currentPageIndex >= bookPages.length - 1 ? 'disabled' : ''}}" bindtap="onTapNextPage" hover-class="soft-hover" hover-stay-time="80" aria-label="下一页">
-        <image class="ui-icon" src="/assets/icons/chevron-right.svg" mode="aspectFit" />
-      </view>
-      <view class="page-nav-divider"></view>
       <view class="page-nav-btn page-nav-add" bindtap="addNewPage" hover-class="soft-hover" hover-stay-time="80" aria-label="添加页面">
         <image class="ui-icon" src="/assets/icons/plus.svg" mode="aspectFit" />
       </view>
@@ -220,68 +217,66 @@
 
   <view class="draw-workspace {{showDrawPanel ? 'show' : ''}}" catchtap="stopPropagation">
     <view class="draw-topbar">
-      <view class="draw-top-btn" bindtap="toggleDrawPanel" hover-class="soft-hover" hover-stay-time="80">
+      <view class="draw-top-btn" bindtap="toggleDrawPanel" hover-class="soft-hover" aria-label="close drawing">
         <image class="draw-tool-icon" src="/assets/icons/x.svg" mode="aspectFit" />
       </view>
       <view class="draw-title-wrap">
-        <text class="draw-title">绘制贴纸</text>
-        <text class="draw-subtitle">{{drawTool === 'eraser' ? '橡皮模式' : '画笔模式'}} · {{drawWidth}}px</text>
+        <text class="draw-title">手绘</text>
       </view>
       <view class="draw-top-actions">
-        <view class="draw-ghost-btn {{!drawCanUndo ? 'disabled' : ''}}" bindtap="undoDrawSticker" hover-class="soft-hover" hover-stay-time="80">
+        <view class="draw-ghost-btn {{!drawCanUndo ? 'disabled' : ''}}" bindtap="undoDrawSticker" hover-class="soft-hover" aria-label="undo">
           <image class="draw-tool-icon" src="/assets/icons/undo.svg" mode="aspectFit" />
         </view>
-        <view class="draw-ghost-btn {{!drawCanRedo ? 'disabled' : ''}}" bindtap="redoDrawSticker" hover-class="soft-hover" hover-stay-time="80">
+        <view class="draw-ghost-btn {{!drawCanRedo ? 'disabled' : ''}}" bindtap="redoDrawSticker" hover-class="soft-hover" aria-label="redo">
           <image class="draw-tool-icon" src="/assets/icons/redo.svg" mode="aspectFit" />
         </view>
-        <view class="draw-save-btn {{!drawHasContent ? 'disabled' : ''}}" bindtap="saveDrawSticker" hover-class="soft-hover" hover-stay-time="80">完成</view>
+        <view class="draw-save-btn {{!drawHasContent ? 'disabled' : ''}}" bindtap="saveDrawSticker" hover-class="soft-hover">完成</view>
       </view>
     </view>
 
     <view class="draw-board">
-      <canvas
-        type="2d"
-        id="drawStickerCanvas"
-        class="draw-sticker-canvas"
-        disable-scroll="{{true}}"
-        bindtouchstart="onDrawStickerStart"
-        bindtouchmove="onDrawStickerMove"
-        bindtouchend="onDrawStickerEnd"
-      />
-      <view class="draw-empty-hint" wx:if="{{!drawHasContent}}">
-        <text>在这里画一枚自己的贴纸</text>
+      <canvas type="2d" id="drawStickerCanvas" class="draw-sticker-canvas" disable-scroll="{{true}}" bindtouchstart="onDrawStickerStart" bindtouchmove="onDrawStickerMove" bindtouchend="onDrawStickerEnd" />
+      <view class="draw-empty-hint" wx:if="{{!drawHasContent}}"><text>在画布上开始创作</text></view>
+    </view>
+
+    <view class="draw-side-toolbar">
+      <view class="draw-icon-tool {{drawTool === 'pen' ? 'active' : ''}}" bindtap="onDrawToolSelect" data-tool="pen" aria-label="pen"><image src="/assets/icons/pencil-line.svg" mode="aspectFit" /></view>
+      <view class="draw-icon-tool {{drawTool === 'curve' ? 'active' : ''}}" bindtap="onDrawToolSelect" data-tool="curve" aria-label="curve"><image src="/assets/icons/spline.svg" mode="aspectFit" /></view>
+      <view class="draw-icon-tool {{drawTool === 'line' ? 'active' : ''}}" bindtap="onDrawToolSelect" data-tool="line" aria-label="line"><image src="/assets/icons/minus.svg" mode="aspectFit" /></view>
+      <view class="draw-icon-tool {{drawTool === 'rect' ? 'active' : ''}}" bindtap="onDrawToolSelect" data-tool="rect" aria-label="rectangle"><image src="/assets/icons/square.svg" mode="aspectFit" /></view>
+      <view class="draw-icon-tool {{drawTool === 'bucket' ? 'active' : ''}}" bindtap="onDrawToolSelect" data-tool="bucket" aria-label="paint bucket"><image src="/assets/icons/paint-bucket.svg" mode="aspectFit" /></view>
+      <view class="draw-icon-tool {{drawTool === 'eraser' ? 'active' : ''}}" bindtap="onDrawToolSelect" data-tool="eraser" aria-label="eraser"><image src="/assets/icons/eraser.svg" mode="aspectFit" /></view>
+      <view class="draw-icon-tool draw-color-tool {{showDrawColorPanel ? 'active' : ''}}" bindtap="toggleDrawColorPanel" aria-label="color"><view class="draw-current-color" style="background: {{drawColor}};"></view></view>
+      <view class="draw-icon-tool {{showDrawLayerPanel ? 'active' : ''}}" bindtap="toggleDrawLayerPanel" aria-label="layers"><image src="/assets/icons/layers.svg" mode="aspectFit" /></view>
+    </view>
+
+    <view class="draw-parameter-stack">
+      <view class="draw-vertical-control">
+        <image src="/assets/icons/minus.svg" mode="aspectFit" />
+        <slider class="draw-vertical-slider" min="1" max="40" value="{{drawWidth}}" bindchanging="onDrawWidthSlider" bindchange="onDrawWidthSlider" activeColor="#d98eaa" backgroundColor="#eadccf" block-color="#fffdf8" block-size="18" />
+      </view>
+      <view class="draw-vertical-control">
+        <image src="/assets/icons/droplet.svg" mode="aspectFit" />
+        <slider class="draw-vertical-slider" min="5" max="100" value="{{drawOpacity}}" bindchanging="onDrawOpacitySlider" bindchange="onDrawOpacitySlider" activeColor="#a8dcc9" backgroundColor="#eadccf" block-color="#fffdf8" block-size="18" />
       </view>
     </view>
 
     <view class="draw-popover draw-color-popover {{showDrawColorPanel ? 'show' : ''}}">
-      <view class="draw-popover-title">画笔颜色</view>
       <view class="draw-color-list">
-        <view class="draw-color-item {{drawColor === item ? 'active' : ''}}" wx:for="{{drawColors}}" wx:key="*this" style="background: {{item}};" bindtap="onDrawColor" data-color="{{item}}" hover-class="soft-hover-scale" hover-stay-time="80"></view>
+        <view class="draw-color-item {{drawColor === item ? 'active' : ''}}" wx:for="{{drawColors}}" wx:key="*this" style="background: {{item}};" bindtap="onDrawColor" data-color="{{item}}"></view>
+        <view class="draw-color-item draw-custom-color" bindtap="openDrawColorPicker" aria-label="custom color"><image src="/assets/icons/plus.svg" mode="aspectFit" /></view>
       </view>
     </view>
 
-    <view class="draw-popover draw-width-popover {{showDrawWidthPanel ? 'show' : ''}}">
-      <view class="draw-popover-title">画笔粗细</view>
-      <view class="draw-width-list">
-        <view class="draw-width-item {{drawWidth === item ? 'active' : ''}}" wx:for="{{drawWidths}}" wx:key="*this" bindtap="onDrawWidth" data-width="{{item}}" hover-class="soft-hover" hover-stay-time="80">
-          <view class="draw-width-preview" style="height: {{item}}rpx;"></view>
-          <text>{{item}}</text>
-        </view>
+    <view class="draw-layer-panel {{showDrawLayerPanel ? 'show' : ''}}">
+      <view class="draw-layer-header">
+        <image src="/assets/icons/layers.svg" mode="aspectFit" />
+        <view class="draw-layer-add" bindtap="addDrawLayer"><image src="/assets/icons/plus.svg" mode="aspectFit" /></view>
       </view>
-    </view>
-
-    <view class="draw-bottom-toolbar">
-      <view class="draw-tool-tab {{showDrawColorPanel ? 'active' : ''}}" bindtap="toggleDrawColorPanel" hover-class="soft-hover" hover-stay-time="80">
-        <view class="draw-current-color" style="background: {{drawColor}};"></view>
-        <text>画笔颜色</text>
-      </view>
-      <view class="draw-tool-tab {{showDrawWidthPanel ? 'active' : ''}}" bindtap="toggleDrawWidthPanel" hover-class="soft-hover" hover-stay-time="80">
-        <view class="draw-current-width" style="height: {{drawWidth}}rpx;"></view>
-        <text>画笔粗细</text>
-      </view>
-      <view class="draw-tool-tab {{drawTool === 'eraser' ? 'active' : ''}}" bindtap="toggleDrawTool" hover-class="soft-hover" hover-stay-time="80">
-        <image class="draw-tool-icon" src="{{drawTool === 'eraser' ? '/assets/icons/eraser.svg' : '/assets/icons/pencil-line.svg'}}" mode="aspectFit" />
-        <text>工具</text>
+      <view class="draw-layer-row {{drawActiveLayerId === item.id ? 'active' : ''}}" wx:for="{{drawLayers}}" wx:key="id" bindtap="selectDrawLayer" data-id="{{item.id}}">
+        <view class="draw-layer-dot"></view>
+        <text>{{index + 1}}</text>
+        <view class="draw-layer-delete" wx:if="{{drawLayers.length > 1}}" catchtap="deleteDrawLayer" data-id="{{item.id}}"><image src="/assets/icons/trash-2.svg" mode="aspectFit" /></view>
       </view>
     </view>
   </view>
@@ -315,6 +310,16 @@
         </view>
       </scroll-view>
 
+      <view class="text-component-actions" wx:if="{{textPanelMode === 'add'}}">
+        <view class="text-component-btn" bindtap="addTodoComponent">
+          <image src="/assets/icons/list-checks.svg" mode="aspectFit" />
+          <text>Todo</text>
+        </view>
+        <view class="text-component-btn" bindtap="addProgressComponent">
+          <image src="/assets/icons/chart-no-axes-column-increasing.svg" mode="aspectFit" />
+          <text>进度条</text>
+        </view>
+      </view>
       <view class="btn btn-primary" bindtap="addText">{{textPanelMode === 'location' ? '添加地点' : textPanelMode === 'add' ? '添加到画布' : '保存文字'}}</view>
     </view>
   </view>
@@ -346,13 +351,13 @@
           <view class="shape-preview shape-ellipse"></view>
           <text>椭圆</text>
         </view>
-        <view class="rect-shape-item {{rectShape === 'heart' ? 'active' : ''}}" bindtap="onRectShape" data-shape="heart">
-          <view class="shape-preview shape-heart">♥</view>
-          <text>心形</text>
+        <view class="rect-shape-item {{rectShape === 'line' ? 'active' : ''}}" bindtap="onRectShape" data-shape="line">
+          <view class="shape-preview shape-line"></view>
+          <text>直线</text>
         </view>
-        <view class="rect-shape-item {{rectShape === 'star' ? 'active' : ''}}" bindtap="onRectShape" data-shape="star">
-          <view class="shape-preview shape-star">★</view>
-          <text>星形</text>
+        <view class="rect-shape-item {{rectShape === 'curve' ? 'active' : ''}}" bindtap="onRectShape" data-shape="curve">
+          <view class="shape-preview shape-curve"></view>
+          <text>曲线</text>
         </view>
       </view>
 

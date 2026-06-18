@@ -4,6 +4,7 @@
  */
 
 const themeUtil = require('./theme')
+const editorLayout = require('./editorLayout')
 
 const STORAGE_KEYS = {
   BOOKS: 'journal_books',
@@ -552,8 +553,8 @@ function createPage(bookId, data = {}) {
   const newPage = {
     id: generateId(),
     bookId: bookId,
-    width: data.width || 690,
-    height: data.height || 920,
+    width: data.width || editorLayout.EDITOR_CANVAS_WIDTH,
+    height: data.height || editorLayout.EDITOR_CANVAS_HEIGHT,
     background: data.background || (themeInfo ? themeInfo.bg : defaultPage ? defaultPage.background : '#FFFFFF'),
     bgPattern: data.bgPattern || (coverProfile ? coverProfile.pattern : defaultPage ? defaultPage.bgPattern : 'blank'),
     bgTexture: data.bgTexture || (coverProfile ? coverProfile.texture : defaultPage ? defaultPage.bgTexture : 'none'),

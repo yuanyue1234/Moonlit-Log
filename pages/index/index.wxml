@@ -75,8 +75,18 @@
     <view style="height: 120rpx;"></view>
   </scroll-view>
 
-  <view class="modal-mask" wx:if="{{showCreateModal}}" bindtap="onCancelCreate">
-    <view class="modal" catchtap="stopPropagation" style="{{keyboardHeight > 0 ? 'padding-bottom:' + keyboardHeight + 'px;' : ''}}">
+  <view class="modal-mask create-journal-mask" wx:if="{{showCreateModal}}">
+    <view class="modal create-journal-screen" catchtap="stopPropagation" style="{{keyboardHeight > 0 ? 'padding-bottom:' + keyboardHeight + 'px;' : ''}}">
+      <view class="create-journal-topbar">
+        <view class="create-journal-icon-btn" bindtap="onCancelCreate" hover-class="soft-hover" aria-label="close">
+          <image src="/assets/icons/x.svg" mode="aspectFit" />
+        </view>
+        <view class="create-journal-heading">
+          <text class="create-journal-kicker">NEW JOURNAL</text>
+          <text class="create-journal-title">新建手账本</text>
+        </view>
+        <view class="create-journal-submit" bindtap="onConfirmCreate" hover-class="soft-hover">创建</view>
+      </view>
       <view class="modal-header">
         <view class="eyebrow">NEW JOURNAL</view>
         <view class="modal-title">新建手帐本</view>

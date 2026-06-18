@@ -174,7 +174,7 @@ Page({
     colorPickerValue: 100,
     // 矩形工具
     showRectPanel: false,
-    rectShape: 'rect', // rect, roundRect, circle, ellipse
+    rectShape: 'rect', // rect, roundRect, circle, ellipse, line, curve
     rectLineStyle: 'solid', // solid, dashed, dotted
     rectStrokeWidth: 2,
     rectFillColor: 'transparent',
@@ -184,11 +184,15 @@ Page({
     showDrawStickerShelf: false,
     showDrawColorPanel: false,
     showDrawWidthPanel: false,
+    showDrawLayerPanel: false,
     drawTool: 'pen',
     drawColor: '#4B3930',
     drawWidth: 8,
+    drawOpacity: 100,
     drawColors: ['#4B3930', '#7B665A', '#D98EAA', '#EAB8C8', '#A8DCC9', '#A9D7E8', '#F5D889', '#C7A7E8', '#FFFFFF'],
     drawWidths: [4, 8, 12, 18, 26],
+    drawLayers: [{ id: 'draw_layer_1', visible: true }],
+    drawActiveLayerId: 'draw_layer_1',
     drawHasContent: false,
     drawCanUndo: false,
     drawCanRedo: false,
@@ -1133,6 +1137,50 @@ Page({
       ctx.textBaseline = 'middle'
       ctx.fillText(subType === 'photoFrame' ? 'PHOTO' : 'TICKET', 0, 0)
     }
+    else if (subType === 'todo') {
+      const scaleRatio = canvasPxW / canvasWidth
+      const items = el.items || ['待办事项 1', '待办事项 2', '待办事项 3']
+      const rowHeight = h / Math.max(1, items.length)
+      const fontSize = (el.fontSize || 25) * scaleRatio
+      ctx.fillStyle = el.background || '#FFFDF8'
+      this._roundRect(ctx, -w / 2, -h / 2, w, h, 12 * scaleRatio)
+      ctx.fill()
+      ctx.font = `${fontSize}px ${this._getFontFamily(el.fontFamily || 'sans')}`
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      items.forEach((item, index) => {
+        const y = -h / 2 + rowHeight * index + rowHeight / 2
+        const box = Math.min(rowHeight * 0.42, 18 * scaleRatio)
+        ctx.strokeStyle = el.accentColor || '#A8DCC9'
+        ctx.lineWidth = 2 * scaleRatio
+        this._roundRect(ctx, -w / 2 + 18 * scaleRatio, y - box / 2, box, box, 4 * scaleRatio)
+        ctx.stroke()
+        if (item.done) {
+          ctx.fillStyle = el.accentColor || '#A8DCC9'
+          ctx.fillRect(-w / 2 + 18 * scaleRatio, y - box / 2, box, box)
+        }
+        ctx.fillStyle = el.textColor || '#4B3930'
+        ctx.fillText(typeof item === 'string' ? item : item.text, -w / 2 + 50 * scaleRatio, y)
+      })
+    }
+    else if (subType === 'progress') {
+      const scaleRatio = canvasPxW / canvasWidth
+      const value = Math.max(0, Math.min(100, Number(el.value) || 0))
+      const radius = h / 2
+      ctx.fillStyle = el.trackColor || '#F1E8DE'
+      this._roundRect(ctx, -w / 2, -h / 2, w, h, radius)
+      ctx.fill()
+      if (value > 0) {
+        ctx.fillStyle = el.progressColor || '#D98EAA'
+        this._roundRect(ctx, -w / 2, -h / 2, Math.max(h, w * value / 100), h, radius)
+        ctx.fill()
+      }
+      ctx.font = `bold ${Math.max(16, h * 0.42)}px ${this._getFontFamily('sans')}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = el.textColor || '#4B3930'
+      ctx.fillText(`${value}%`, 0, 0)
+    }
     else if (subType === 'circle') {
       const r = (el.radius || 40) * (canvasPxW / canvasWidth)
       ctx.beginPath()
@@ -1193,6 +1241,16 @@ Page({
           ctx.fillStyle = fillColor
           ctx.fill()
         }
+        if (shouldStroke) ctx.stroke()
+      } else if (shapeType === 'line') {
+        ctx.beginPath()
+        ctx.moveTo(-w / 2, 0)
+        ctx.lineTo(w / 2, 0)
+        if (shouldStroke) ctx.stroke()
+      } else if (shapeType === 'curve') {
+        ctx.beginPath()
+        ctx.moveTo(-w / 2, h / 3)
+        ctx.bezierCurveTo(-w / 5, -h / 2, w / 5, -h / 2, w / 2, h / 3)
         if (shouldStroke) ctx.stroke()
       } else if (shapeType === 'heart') {
         if (el.fillImage) result = this._drawRectFillImage(ctx, el, w, h)
@@ -1840,7 +1898,8 @@ Page({
 
   onTouchEnd(e) {
     if (this.data.editorMode !== 'edit') return
-    if (touchState.isMoved && touchState.type) {
+    const wasMoved = touchState.isMoved
+    if (wasMoved && touchState.type) {
       this.pushHistory()
     }
     touchState.type = null
@@ -1848,6 +1907,11 @@ Page({
     // 清除对齐参考线
     this._clearAlignmentGuides()
     this.renderCanvas()
+
+    if (!wasMoved && this._handleTemplateTap()) {
+      this._lastTapTime = 0
+      return
+    }
 
     // 双击检测
     const now = Date.now()
@@ -1859,6 +1923,62 @@ Page({
       this._lastTapTime = now
     }
   },
+  _handleTemplateTap() {
+    const selected = this.data.selectedElement
+    if (!selected || !selected.templateAction) return false
+    if (selected.templateAction === 'image') {
+      this.fillRectWithImage(selected)
+      return true
+    }
+    if (selected.templateAction === 'text') {
+      if (selected.type === 'text') this.openSelectedTextEditor()
+      else if (selected.subType === 'rect') this.openSelectedRectTextEditor()
+      else {
+        this.setData({
+          showTextPanel: true,
+          showBgPanel: false,
+          showStickerPanel: false,
+          showTemplatePanel: false,
+          showRectPanel: false,
+          textPanelMode: 'decor',
+          editingTextId: selected.id,
+          textInput: selected.text || '',
+          textColor: selected.color || this.data.textColor,
+          textSize: selected.fontSize || this.data.textSize,
+          textFontFamily: selected.fontFamily || this.data.textFontFamily
+        })
+      }
+      return true
+    }
+    if (selected.templateAction === 'todo') {
+      this.setData({
+        showTextPanel: true,
+        showBgPanel: false,
+        showStickerPanel: false,
+        showTemplatePanel: false,
+        showRectPanel: false,
+        textPanelMode: 'todo',
+        editingTextId: selected.id,
+        textInput: (selected.items || []).map(item => typeof item === 'string' ? item : item.text).join('\n'),
+        textColor: selected.textColor || this.data.textColor,
+        textSize: selected.fontSize || this.data.textSize
+      })
+      return true
+    }
+    if (selected.templateAction === 'progress') {
+      const values = [0, 25, 50, 75, 100]
+      wx.showActionSheet({
+        itemList: values.map(value => `${value}%`),
+        success: (res) => {
+          this._updateElement(selected.id, { value: values[res.tapIndex] })
+          this.pushHistory()
+          this.renderCanvas()
+        }
+      })
+      return true
+    }
+    return false
+  },
   _handleDoubleTap(e) {
     const { selectedId, selectedElement } = this.data
     if (!selectedId || !selectedElement) return
@@ -1869,7 +1989,7 @@ Page({
     }
     // 双击矩形占位框添加图片
     else if (selectedElement.type === 'decoration' && selectedElement.subType === 'rect' && selectedElement.lineStyle === 'dashed') {
-      this.replaceRectWithImage(selectedElement)
+      this.fillRectWithImage(selectedElement)
     }
   },
 
@@ -1988,11 +2108,28 @@ Page({
 
   _updateElement(id, updates) {
     let selectedElement = this.data.selectedElement
+    const target = this.data.elements.find(el => el.id === id)
+    const groupId = target && target.groupId
+    const deltaX = target && updates.x !== undefined ? updates.x - target.x : 0
+    const deltaY = target && updates.y !== undefined ? updates.y - target.y : 0
     const elements = this.data.elements.map(el => {
-      if (el.id !== id) return el
-      const next = { ...el, ...updates }
-      if (id === this.data.selectedId) selectedElement = next
-      return next
+      if (el.id === id) {
+        const next = { ...el, ...updates }
+        if (id === this.data.selectedId) selectedElement = next
+        return next
+      }
+      if (groupId && el.groupId === groupId && (deltaX || deltaY)) {
+        return {
+          ...el,
+          x: el.x + deltaX,
+          y: el.y + deltaY,
+          ...(updates.locked !== undefined ? { locked: updates.locked } : {})
+        }
+      }
+      if (groupId && el.groupId === groupId && updates.locked !== undefined) {
+        return { ...el, locked: updates.locked }
+      }
+      return el
     })
     this.setData({ elements, selectedElement })
   },
@@ -2509,7 +2646,7 @@ Page({
       return
     }
 
-    if ((this.data.textPanelMode === 'edit' || this.data.textPanelMode === 'rect') && this.data.editingTextId) {
+    if ((this.data.textPanelMode === 'edit' || this.data.textPanelMode === 'rect' || this.data.textPanelMode === 'todo' || this.data.textPanelMode === 'decor') && this.data.editingTextId) {
       const id = this.data.editingTextId
       const target = this.data.elements.find(el => el.id === id)
       if (target && target.locked) {
@@ -2518,6 +2655,27 @@ Page({
       }
       const elements = this.data.elements.map(el => {
         if (el.id !== id) return el
+        if (this.data.textPanelMode === 'todo') {
+          const previous = el.items || []
+          return {
+            ...el,
+            items: text.split('\n').filter(Boolean).map((item, index) => ({
+              text: item,
+              done: previous[index] && previous[index].done === true
+            })),
+            textColor: this.data.textColor,
+            fontSize: this.data.textSize
+          }
+        }
+        if (this.data.textPanelMode === 'decor') {
+          return {
+            ...el,
+            text,
+            color: this.data.textColor,
+            fontSize: this.data.textSize,
+            fontFamily: this.data.textFontFamily
+          }
+        }
         if (this.data.textPanelMode === 'rect') {
           return {
             ...el,
@@ -2604,6 +2762,63 @@ Page({
     this.renderCanvas()
   },
 
+  addTodoComponent() {
+    const id = 'el_' + Date.now()
+    const newEl = {
+      id,
+      type: 'decoration',
+      subType: 'todo',
+      x: canvasWidth / 2,
+      y: canvasHeight / 2,
+      width: 520,
+      height: 230,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+      zIndex: this._getMaxZIndex() + 1,
+      items: [
+        { text: '待办事项 1', done: false },
+        { text: '待办事项 2', done: false },
+        { text: '待办事项 3', done: false }
+      ],
+      background: '#FFFDF8',
+      accentColor: '#A8DCC9',
+      textColor: '#4B3930',
+      fontSize: 25,
+      templateAction: 'todo'
+    }
+    const elements = [...this.data.elements, newEl]
+    this.setData({ elements, selectedId: id, selectedElement: newEl, showTextPanel: false })
+    this.pushHistory()
+    this.renderCanvas()
+  },
+
+  addProgressComponent() {
+    const id = 'el_' + Date.now()
+    const newEl = {
+      id,
+      type: 'decoration',
+      subType: 'progress',
+      x: canvasWidth / 2,
+      y: canvasHeight / 2,
+      width: 500,
+      height: 54,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+      zIndex: this._getMaxZIndex() + 1,
+      value: 35,
+      trackColor: '#F1E8DE',
+      progressColor: '#D98EAA',
+      textColor: '#4B3930',
+      templateAction: 'progress'
+    }
+    const elements = [...this.data.elements, newEl]
+    this.setData({ elements, selectedId: id, selectedElement: newEl, showTextPanel: false })
+    this.pushHistory()
+    this.renderCanvas()
+  },
+
   deleteSelected() {
     const { selectedId, elements } = this.data
     if (!selectedId) return
@@ -2612,8 +2827,10 @@ Page({
       wx.showToast({ title: '已锁定，先解锁再删除', icon: 'none', duration: 1000 })
       return
     }
-    const newElements = elements.filter(el => el.id !== selectedId)
-    this._cleanupOwnedStickerForElement(el, newElements)
+    const selectedElements = el && el.groupId ? elements.filter(item => item.groupId === el.groupId) : [el]
+    const selectedIds = new Set(selectedElements.filter(Boolean).map(item => item.id))
+    const newElements = elements.filter(item => !selectedIds.has(item.id))
+    selectedElements.forEach(item => this._cleanupOwnedStickerForElement(item, newElements))
     this.setData({ elements: newElements, selectedId: null, selectedElement: null })
     this._updateToolbarFixedStyle()
     this.pushHistory()
@@ -2626,6 +2843,24 @@ Page({
     const el = this._getSelectedElement()
     if (!el) return
     const maxZ = this._getMaxZIndex()
+    if (el.groupId) {
+      const group = this.data.elements.filter(item => item.groupId === el.groupId)
+      const nextGroupId = `${el.groupId}_copy_${Date.now()}`
+      const copies = group.map((item, index) => ({
+        ...JSON.parse(JSON.stringify(item)),
+        id: `el_${Date.now()}_${index}`,
+        groupId: nextGroupId,
+        x: item.x + 30,
+        y: item.y + 30,
+        zIndex: maxZ + index + 1
+      }))
+      const selected = copies.find(item => item.templateElementId === el.templateElementId) || copies[0]
+      const elements = [...this.data.elements, ...copies]
+      this.setData({ elements, selectedId: selected.id, selectedElement: selected })
+      this.pushHistory()
+      this.renderCanvas()
+      return
+    }
     const newEl = {
       ...JSON.parse(JSON.stringify(el)),
       id: 'el_' + Date.now(),
@@ -2916,7 +3151,10 @@ Page({
             strokeColor: nextStrokeColor,
             strokeWidth: nextStrokeWidth,
             fillImageOffsetX: 0,
-            fillImageOffsetY: 0
+            fillImageOffsetY: 0,
+            text: '',
+            placeholderText: '',
+            templateAction: ''
           }
           const nextElements = this.data.elements.map(item => item.id === rectEl.id ? { ...item, ...updates } : item)
           this._cleanupOwnedStickerForElement(rectEl, nextElements)
@@ -3325,6 +3563,8 @@ Page({
     } else if (colorPickerTarget === 'border') {
       this.setData({ borderColor: color })
       this._applyBorder()
+    } else if (colorPickerTarget === 'draw') {
+      this.setData({ drawColor: color })
     } else {
       this.setData({ background: color })
       this.savePage()
@@ -3497,31 +3737,6 @@ Page({
       case 'export': this.exportImage(); break
       case 'layers': this.showLayerPanel(); break
     }
-  },
-
-  toggleMoreMenu() {
-    const { bookPages, currentPageIndex, editorMode } = this.data
-    const currentPage = bookPages && bookPages[currentPageIndex]
-    const canEditPages = editorMode === 'edit'
-    const canDeletePage = canEditPages && bookPages && bookPages.length > 1 && currentPage && currentPage.role !== 'cover'
-    const actions = [
-      { label: '保存', fn: () => { this._syncSave(); wx.showToast({ title: '已保存', icon: 'none' }) } },
-      { label: '导出到相册', fn: () => this.exportImage() },
-      { label: '图层管理', fn: () => this.showLayerPanel() }
-    ]
-    if (canEditPages) {
-      actions.splice(1, 0, { label: '添加下一页', fn: () => this.addNewPage() })
-    }
-    if (canDeletePage) {
-      actions.push({ label: '删除此页', fn: () => this._confirmDeletePage(), danger: true })
-    }
-    wx.showActionSheet({
-      itemList: actions.map(item => item.label),
-      success: (res) => {
-        const action = actions[res.tapIndex]
-        if (action) action.fn()
-      }
-    })
   },
 
   _confirmDeletePage() {
@@ -3751,7 +3966,10 @@ Page({
       showDrawStickerShelf: false,
       showDrawColorPanel: false,
       showDrawWidthPanel: false,
+      showDrawLayerPanel: false,
       drawTool: 'pen',
+      drawLayers: [{ id: 'draw_layer_1', visible: true }],
+      drawActiveLayerId: 'draw_layer_1',
       drawHasContent: false,
       drawCanUndo: false,
       drawCanRedo: false
@@ -3772,6 +3990,7 @@ Page({
       showDrawStickerShelf: false,
       showDrawColorPanel: false,
       showDrawWidthPanel: false,
+      showDrawLayerPanel: false,
       showSelectedMorePanel: false,
       selectedMoreActions: [],
       selectedMoreTitle: '',
@@ -3796,7 +4015,7 @@ Page({
         const ctx = node.getContext('2d')
         const width = boardRect.width || canvasInfo.width || 320
         const height = boardRect.height || canvasInfo.height || 220
-        const dpr = wx.getSystemInfoSync().pixelRatio || 2
+        const dpr = Math.min(2, wx.getSystemInfoSync().pixelRatio || 2)
         node.width = width * dpr
         node.height = height * dpr
         ctx.scale(dpr, dpr)
@@ -3806,6 +4025,7 @@ Page({
         this._drawStickerCanvas = node
         this._drawStickerCtx = ctx
         this._drawStickerSize = { width, height }
+        this._drawStickerDpr = dpr
         this._drawStickerRect = {
           left: boardRect.left || canvasInfo.left || 0,
           top: boardRect.top || canvasInfo.top || 0
@@ -3828,7 +4048,8 @@ Page({
   onDrawColor(e) {
     this.setData({
       drawColor: e.currentTarget.dataset.color || '#4B3930',
-      drawTool: 'pen'
+      drawTool: this.data.drawTool === 'eraser' ? 'pen' : this.data.drawTool,
+      showDrawColorPanel: false
     })
   },
 
@@ -3836,37 +4057,90 @@ Page({
     this.setData({ drawWidth: parseInt(e.currentTarget.dataset.width, 10) || 8 })
   },
 
+  onDrawWidthSlider(e) {
+    this.setData({ drawWidth: Math.max(1, parseInt(e.detail.value, 10) || 1) })
+  },
+
+  onDrawOpacitySlider(e) {
+    this.setData({ drawOpacity: Math.max(5, parseInt(e.detail.value, 10) || 100) })
+  },
+
+  onDrawToolSelect(e) {
+    this.setData({
+      drawTool: e.currentTarget.dataset.tool || 'pen',
+      showDrawColorPanel: false,
+      showDrawLayerPanel: false
+    })
+  },
+
+  openDrawColorPicker() {
+    this.setData({
+      showColorPicker: true,
+      colorPickerTarget: 'draw',
+      showDrawColorPanel: false
+    })
+  },
+
   onDrawStickerStart(e) {
     if (!this._drawStickerCtx || !e.touches || !e.touches[0]) return
     const point = this._getDrawPoint(e.touches[0])
+    const tool = this.data.drawTool
+    if (tool === 'bucket') {
+      const fill = {
+        type: 'fill',
+        point,
+        color: this.data.drawColor,
+        opacity: this.data.drawOpacity,
+        layerId: this.data.drawActiveLayerId
+      }
+      if (!this._drawStickerStrokes) this._drawStickerStrokes = []
+      this._drawStickerStrokes.push(fill)
+      this._drawStickerRedoStack = []
+      this._redrawDrawStickerCanvas()
+      this._updateDrawHistoryState()
+      return
+    }
     const stroke = {
-      type: 'stroke',
-      tool: this.data.drawTool,
+      type: tool === 'line' || tool === 'rect' ? 'shape' : 'stroke',
+      tool,
+      shape: tool === 'line' || tool === 'rect' ? tool : '',
       color: this.data.drawColor,
       width: this.data.drawWidth,
+      opacity: this.data.drawOpacity,
+      layerId: this.data.drawActiveLayerId,
       points: [point]
     }
     this._drawStickerCurrentStroke = stroke
     this._drawStickerLast = point
-    this._drawDrawStrokeSegment(this._drawStickerCtx, point, point, stroke)
+    if (stroke.type === 'stroke') this._drawDrawStrokeSegment(this._drawStickerCtx, point, point, stroke)
     if (!this.data.drawHasContent) this.setData({ drawHasContent: true })
   },
 
   onDrawStickerMove(e) {
     if (!this._drawStickerCtx || !this._drawStickerLast || !this._drawStickerCurrentStroke || !e.touches || !e.touches[0]) return
     const next = this._getDrawPoint(e.touches[0])
-    this._drawStickerCurrentStroke.points.push(next)
-    this._drawDrawStrokeSegment(this._drawStickerCtx, this._drawStickerLast, next, this._drawStickerCurrentStroke)
+    const current = this._drawStickerCurrentStroke
+    if (current.type === 'shape') {
+      current.points[1] = next
+      this._redrawDrawStickerCanvas()
+      this._drawDrawAction(this._drawStickerCtx, current)
+    } else {
+      current.points.push(next)
+      this._drawDrawStrokeSegment(this._drawStickerCtx, this._drawStickerLast, next, current)
+    }
     this._drawStickerLast = next
     if (!this.data.drawHasContent) this.setData({ drawHasContent: true })
   },
 
   onDrawStickerEnd() {
     if (this._drawStickerCurrentStroke) {
+      const current = this._drawStickerCurrentStroke
+      if (current.type === 'shape' && current.points.length === 1) current.points.push({ ...current.points[0] })
       if (!this._drawStickerStrokes) this._drawStickerStrokes = []
-      this._drawStickerStrokes.push(this._drawStickerCurrentStroke)
+      this._drawStickerStrokes.push(current)
       this._drawStickerRedoStack = []
       this._drawStickerCurrentStroke = null
+      this._redrawDrawStickerCanvas()
       this._updateDrawHistoryState()
     }
     this._drawStickerLast = null
@@ -3877,15 +4151,161 @@ Page({
     const isEraser = stroke.tool === 'eraser'
     ctx.save()
     ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over'
+    ctx.globalAlpha = isEraser ? 1 : Math.max(0.05, (stroke.opacity || 100) / 100)
     ctx.strokeStyle = isEraser ? 'rgba(0,0,0,1)' : (stroke.color || '#4B3930')
     ctx.lineWidth = Math.max(1, isEraser ? (stroke.width || 8) * 2.1 : (stroke.width || 8))
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.beginPath()
     ctx.moveTo(from.x, from.y)
-    ctx.lineTo(to.x + 0.01, to.y + 0.01)
+    if (stroke.tool === 'curve') {
+      const midX = (from.x + to.x) / 2
+      const midY = (from.y + to.y) / 2
+      ctx.quadraticCurveTo(from.x, from.y, midX + 0.01, midY + 0.01)
+    } else {
+      ctx.lineTo(to.x + 0.01, to.y + 0.01)
+    }
     ctx.stroke()
     ctx.restore()
+  },
+
+  _drawDrawAction(ctx, action) {
+    if (!ctx || !action) return
+    if (action.type === 'stamp') {
+      this._drawDrawStamp(ctx, action)
+      return
+    }
+    if (action.type === 'fill') {
+      this._applyDrawFill(ctx, action)
+      return
+    }
+    const points = action.points || []
+    if (action.type === 'shape') {
+      if (!points[0] || !points[1]) return
+      ctx.save()
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.globalAlpha = Math.max(0.05, (action.opacity || 100) / 100)
+      ctx.strokeStyle = action.color || '#4B3930'
+      ctx.lineWidth = Math.max(1, action.width || 8)
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      if (action.shape === 'rect') {
+        ctx.rect(points[0].x, points[0].y, points[1].x - points[0].x, points[1].y - points[0].y)
+      } else {
+        ctx.moveTo(points[0].x, points[0].y)
+        ctx.lineTo(points[1].x, points[1].y)
+      }
+      ctx.stroke()
+      ctx.restore()
+      return
+    }
+    if (!points.length) return
+    if (action.tool === 'curve' && points.length > 1) {
+      const isEraser = action.tool === 'eraser'
+      ctx.save()
+      ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over'
+      ctx.globalAlpha = isEraser ? 1 : Math.max(0.05, (action.opacity || 100) / 100)
+      ctx.strokeStyle = action.color || '#4B3930'
+      ctx.lineWidth = Math.max(1, action.width || 8)
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      ctx.moveTo(points[0].x, points[0].y)
+      for (let i = 1; i < points.length - 1; i++) {
+        const midX = (points[i].x + points[i + 1].x) / 2
+        const midY = (points[i].y + points[i + 1].y) / 2
+        ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY)
+      }
+      const last = points[points.length - 1]
+      ctx.lineTo(last.x, last.y)
+      ctx.stroke()
+      ctx.restore()
+      return
+    }
+    if (points.length === 1) {
+      this._drawDrawStrokeSegment(ctx, points[0], points[0], action)
+      return
+    }
+    for (let i = 1; i < points.length; i++) this._drawDrawStrokeSegment(ctx, points[i - 1], points[i], action)
+  },
+
+  _hexToRgba(hex, opacity = 100) {
+    const normalized = String(hex || '#4B3930').replace('#', '')
+    const value = normalized.length === 3
+      ? normalized.split('').map(char => char + char).join('')
+      : normalized.padEnd(6, '0').slice(0, 6)
+    return [
+      parseInt(value.slice(0, 2), 16) || 0,
+      parseInt(value.slice(2, 4), 16) || 0,
+      parseInt(value.slice(4, 6), 16) || 0,
+      Math.round(255 * Math.max(0.05, opacity / 100))
+    ]
+  },
+
+  _applyDrawFill(ctx, fill) {
+    if (!ctx || !fill || !this._drawStickerCanvas || !this._drawStickerSize) return
+    const dpr = this._drawStickerDpr || 1
+    const width = this._drawStickerCanvas.width
+    const height = this._drawStickerCanvas.height
+    const startX = Math.max(0, Math.min(width - 1, Math.round(fill.point.x * dpr)))
+    const startY = Math.max(0, Math.min(height - 1, Math.round(fill.point.y * dpr)))
+    let imageData
+    try {
+      imageData = ctx.getImageData(0, 0, width, height)
+    } catch (err) {
+      return
+    }
+    const pixels = imageData.data
+    const startIndex = (startY * width + startX) * 4
+    const source = [pixels[startIndex], pixels[startIndex + 1], pixels[startIndex + 2], pixels[startIndex + 3]]
+    const target = this._hexToRgba(fill.color, fill.opacity || 100)
+    if (source.every((value, index) => Math.abs(value - target[index]) <= 12)) return
+    const matches = (index) => Math.abs(pixels[index] - source[0]) <= 12 &&
+      Math.abs(pixels[index + 1] - source[1]) <= 12 &&
+      Math.abs(pixels[index + 2] - source[2]) <= 12 &&
+      Math.abs(pixels[index + 3] - source[3]) <= 12
+    const stack = [startX, startY]
+    while (stack.length) {
+      const y = stack.pop()
+      let x = stack.pop()
+      let index = (y * width + x) * 4
+      while (x >= 0 && matches(index)) {
+        x -= 1
+        index -= 4
+      }
+      x += 1
+      index += 4
+      let spanUp = false
+      let spanDown = false
+      while (x < width && matches(index)) {
+        pixels[index] = target[0]
+        pixels[index + 1] = target[1]
+        pixels[index + 2] = target[2]
+        pixels[index + 3] = target[3]
+        if (y > 0) {
+          const upIndex = index - width * 4
+          if (matches(upIndex) && !spanUp) {
+            stack.push(x, y - 1)
+            spanUp = true
+          } else if (!matches(upIndex)) {
+            spanUp = false
+          }
+        }
+        if (y < height - 1) {
+          const downIndex = index + width * 4
+          if (matches(downIndex) && !spanDown) {
+            stack.push(x, y + 1)
+            spanDown = true
+          } else if (!matches(downIndex)) {
+            spanDown = false
+          }
+        }
+        x += 1
+        index += 4
+      }
+    }
+    ctx.putImageData(imageData, 0, 0)
   },
 
   _drawDrawStamp(ctx, stamp) {
@@ -3910,19 +4330,11 @@ Page({
     const ctx = this._drawStickerCtx
     ctx.clearRect(0, 0, this._drawStickerSize.width, this._drawStickerSize.height)
     const strokes = this._drawStickerStrokes || []
-    strokes.forEach(stroke => {
-      if (stroke.type === 'stamp') {
-        this._drawDrawStamp(ctx, stroke)
-        return
-      }
-      const points = stroke.points || []
-      if (points.length === 1) {
-        this._drawDrawStrokeSegment(ctx, points[0], points[0], stroke)
-        return
-      }
-      for (let i = 1; i < points.length; i++) {
-        this._drawDrawStrokeSegment(ctx, points[i - 1], points[i], stroke)
-      }
+    const layers = this.data.drawLayers || []
+    const layerIds = layers.length ? layers.filter(layer => layer.visible !== false).map(layer => layer.id) : ['draw_layer_1']
+    layerIds.forEach(layerId => {
+      strokes.filter(action => (action.layerId || 'draw_layer_1') === layerId)
+        .forEach(action => this._drawDrawAction(ctx, action))
     })
   },
 
@@ -3938,7 +4350,8 @@ Page({
 
   _getDrawBounds() {
     const size = this._drawStickerSize || { width: 600, height: 600 }
-    const strokes = (this._drawStickerStrokes || []).filter(item => item.tool !== 'eraser')
+    const visibleLayers = new Set((this.data.drawLayers || []).filter(layer => layer.visible !== false).map(layer => layer.id))
+    const strokes = (this._drawStickerStrokes || []).filter(item => item.tool !== 'eraser' && (!item.layerId || visibleLayers.has(item.layerId)))
     if (!strokes.length) return { x: 0, y: 0, width: size.width, height: size.height }
     let minX = size.width
     let minY = size.height
@@ -3950,6 +4363,13 @@ Page({
         minY = Math.min(minY, stroke.y)
         maxX = Math.max(maxX, stroke.x + stroke.width)
         maxY = Math.max(maxY, stroke.y + stroke.height)
+        return
+      }
+      if (stroke.type === 'fill') {
+        minX = 0
+        minY = 0
+        maxX = size.width
+        maxY = size.height
         return
       }
       const pad = Math.max(18, (stroke.width || 8) * 2)
@@ -4011,7 +4431,49 @@ Page({
     this.setData({
       showDrawColorPanel: !this.data.showDrawColorPanel,
       showDrawStickerShelf: false,
-      showDrawWidthPanel: false
+      showDrawWidthPanel: false,
+      showDrawLayerPanel: false
+    })
+  },
+
+  toggleDrawLayerPanel() {
+    this.setData({
+      showDrawLayerPanel: !this.data.showDrawLayerPanel,
+      showDrawColorPanel: false,
+      showDrawStickerShelf: false
+    })
+  },
+
+  addDrawLayer() {
+    const layers = this.data.drawLayers || []
+    if (layers.length >= 6) {
+      wx.showToast({ title: '最多 6 个图层', icon: 'none' })
+      return
+    }
+    const id = `draw_layer_${Date.now()}`
+    this.setData({
+      drawLayers: [...layers, { id, visible: true }],
+      drawActiveLayerId: id
+    }, () => this._redrawDrawStickerCanvas())
+  },
+
+  selectDrawLayer(e) {
+    this.setData({ drawActiveLayerId: e.currentTarget.dataset.id })
+  },
+
+  deleteDrawLayer(e) {
+    const id = e.currentTarget.dataset.id
+    const layers = this.data.drawLayers || []
+    if (layers.length <= 1) return
+    const nextLayers = layers.filter(layer => layer.id !== id)
+    this._drawStickerStrokes = (this._drawStickerStrokes || []).filter(action => action.layerId !== id)
+    this._drawStickerRedoStack = []
+    this.setData({
+      drawLayers: nextLayers,
+      drawActiveLayerId: this.data.drawActiveLayerId === id ? nextLayers[nextLayers.length - 1].id : this.data.drawActiveLayerId
+    }, () => {
+      this._redrawDrawStickerCanvas()
+      this._updateDrawHistoryState()
     })
   },
 
@@ -4050,6 +4512,7 @@ Page({
       const stamp = {
         type: 'stamp',
         src: sticker.src,
+        layerId: this.data.drawActiveLayerId,
         x: (size.width - width) / 2,
         y: (size.height - height) / 2,
         width,
@@ -4110,7 +4573,8 @@ Page({
             showDrawPanel: false,
             showDrawStickerShelf: false,
             showDrawColorPanel: false,
-            showDrawWidthPanel: false
+            showDrawWidthPanel: false,
+            showDrawLayerPanel: false
           })
           this._drawStickerStrokes = []
           this._drawStickerRedoStack = []
@@ -4161,13 +4625,13 @@ Page({
       shapeType: rectShape,
       x: 345,
       y: 460,
-      width: 200,
-      height: 150,
+      width: rectShape === 'line' || rectShape === 'curve' ? 280 : 200,
+      height: rectShape === 'line' ? 40 : rectShape === 'curve' ? 120 : 150,
       rotation: 0,
       scaleX: 1,
       scaleY: 1,
       zIndex: maxZ + 1,
-      fillColor: rectFillColor,
+      fillColor: rectShape === 'line' || rectShape === 'curve' ? 'transparent' : rectFillColor,
       strokeColor: rectStrokeColor,
       strokeWidth: rectStrokeWidth,
       lineStyle: rectLineStyle,

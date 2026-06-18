@@ -27,7 +27,7 @@ const TEMPLATES = [
       { type: 'decoration', subType: 'rect', shapeType: 'circle', x: 660, y: 160, width: 12, height: 12, fillColor: '#FFD93D', strokeColor: 'transparent', strokeWidth: 0, lineStyle: 'solid', zIndex: 5 },
       // 主图片区 - 拍立得风格（白边框+阴影感）
       { type: 'decoration', subType: 'rect', shapeType: 'rect', x: 345, y: 300, width: 480, height: 340, fillColor: '#FFFFFF', strokeColor: '#EFEFEF', strokeWidth: 1, lineStyle: 'solid', zIndex: 0 },
-      { type: 'decoration', subType: 'rect', shapeType: 'roundRect', x: 345, y: 300, width: 420, height: 280, fillColor: '#FFF5F0', strokeColor: '#E8DDD4', strokeWidth: 2, lineStyle: 'dashed', borderRadius: 12, text: '点击添加图片', textColor: '#C4B5A6', textFontSize: 24, zIndex: 1 },
+      { type: 'decoration', subType: 'rect', shapeType: 'roundRect', x: 345, y: 300, width: 420, height: 280, fillColor: '#FFF5F0', strokeColor: '#E8DDD4', strokeWidth: 2, lineStyle: 'dashed', borderRadius: 12, text: '添加图片', textColor: '#C4B5A6', textFontSize: 24, zIndex: 1 },
       // 拍立得底部手写文字位
       { type: 'decoration', subType: 'rect', shapeType: 'roundRect', x: 345, y: 488, width: 320, height: 36, fillColor: 'transparent', strokeColor: 'transparent', strokeWidth: 0, lineStyle: 'solid', borderRadius: 8, text: '', textColor: '#B0A090', textFontSize: 22, zIndex: 2 },
       // 纸胶带装饰
@@ -147,7 +147,7 @@ const TEMPLATES = [
       { type: 'decoration', subType: 'rect', shapeType: 'circle', x: 80, y: 165, width: 16, height: 16, fillColor: '#FF6B6B', strokeColor: 'transparent', strokeWidth: 0, lineStyle: 'solid', borderRadius: 8, zIndex: 5 },
       { type: 'decoration', subType: 'rect', shapeType: 'circle', x: 80, y: 172, width: 4, height: 12, fillColor: '#FF6B6B', strokeColor: 'transparent', strokeWidth: 0, lineStyle: 'solid', borderRadius: 2, zIndex: 5 },
       // 大图占位 - 旅行照片
-      { type: 'decoration', subType: 'rect', shapeType: 'roundRect', x: 345, y: 270, width: 560, height: 320, fillColor: '#FFF8F0', strokeColor: '#C4956A', strokeWidth: 2, lineStyle: 'dashed', borderRadius: 16, text: '点击添加旅行照片', textColor: '#B99A7A', textFontSize: 24, zIndex: 1 },
+      { type: 'decoration', subType: 'rect', shapeType: 'roundRect', x: 345, y: 270, width: 560, height: 320, fillColor: '#FFF8F0', strokeColor: '#C4956A', strokeWidth: 2, lineStyle: 'dashed', borderRadius: 16, text: '添加旅行照片', textColor: '#B99A7A', textFontSize: 24, zIndex: 1 },
       // 照片角标装饰
       { type: 'decoration', subType: 'rect', shapeType: 'rect', x: 80, y: 240, width: 70, height: 28, fillColor: 'rgba(196, 149, 106, 0.2)', strokeColor: 'transparent', strokeWidth: 0, lineStyle: 'solid', borderRadius: 4, zIndex: 5 },
       // 目的地信息卡
@@ -183,7 +183,7 @@ const TEMPLATES = [
       // 分割线
       { type: 'decoration', subType: 'line', x: 80, y: 108, width: 160, color: '#FFD1DC', strokeWidth: 2 },
       // 美食照片 - 偏左
-      { type: 'decoration', subType: 'rect', shapeType: 'roundRect', x: 220, y: 260, width: 380, height: 320, fillColor: '#FFF8F0', strokeColor: '#FF8BA7', strokeWidth: 2, lineStyle: 'dashed', borderRadius: 16, text: '点击添加美食照片', textColor: '#C69B77', textFontSize: 22, zIndex: 1 },
+      { type: 'decoration', subType: 'rect', shapeType: 'roundRect', x: 220, y: 260, width: 380, height: 320, fillColor: '#FFF8F0', strokeColor: '#FF8BA7', strokeWidth: 2, lineStyle: 'dashed', borderRadius: 16, text: '添加美食照片', textColor: '#C69B77', textFontSize: 22, zIndex: 1 },
       // 右侧评分区
       { type: 'decoration', subType: 'rect', shapeType: 'roundRect', x: 560, y: 260, width: 160, height: 200, fillColor: '#FFF0F5', strokeColor: '#FF8BA7', strokeWidth: 1, lineStyle: 'solid', borderRadius: 14, zIndex: 0 },
       { type: 'decoration', subType: 'rect', shapeType: 'roundRect', x: 560, y: 270, width: 60, height: 28, fillColor: '#FF8BA7', strokeColor: 'transparent', strokeWidth: 0, lineStyle: 'solid', borderRadius: 14, text: '评分', textColor: '#FFFFFF', textFontSize: 18, zIndex: 2 },
@@ -321,18 +321,78 @@ const TEMPLATES = [
 
 const TEMPLATE_CATEGORIES = ['全部', '日常', '旅行', '生活']
 
+const TEMPLATE_BASE_HEIGHT = 920
+const TEMPLATE_CANVAS_HEIGHT = 1200
+
+function isImageSlot(element) {
+  if (!element || element.type !== 'decoration' || element.subType !== 'rect') return false
+  return element.lineStyle === 'dashed' && (element.height || 0) >= 80 && (element.width || 0) >= 90
+}
+
+function prepareTemplate(template) {
+  const source = JSON.parse(JSON.stringify(template))
+  let elements = source.elements || []
+
+  if (source.id === 'checklist') {
+    elements = elements.filter(element => (element.y || 0) < 125)
+    elements.push({
+      type: 'decoration', subType: 'todo', x: 345, y: 390, width: 560, height: 430,
+      items: Array.from({ length: 6 }, (_, index) => ({ text: `待办事项 ${index + 1}`, done: index === 0 })),
+      background: '#FFFDF8', accentColor: '#6BCB77', textColor: '#4B3930', fontSize: 25,
+      templateAction: 'todo', zIndex: 2
+    })
+    elements.push({
+      type: 'decoration', subType: 'progress', x: 345, y: 680, width: 560, height: 48,
+      value: 17, trackColor: '#F1E8DE', progressColor: '#6BCB77', textColor: '#2D5F2D',
+      templateAction: 'progress', zIndex: 3
+    })
+  }
+
+  if (source.id === 'study') {
+    elements = elements.filter(element => (element.y || 0) !== 770)
+    elements.push({
+      type: 'decoration', subType: 'progress', x: 345, y: 770, width: 500, height: 44,
+      value: 30, trackColor: '#F1E8DE', progressColor: '#2D5F8A', textColor: '#2D5F8A',
+      templateAction: 'progress', zIndex: 3
+    })
+  }
+
+  const yScale = TEMPLATE_CANVAS_HEIGHT / TEMPLATE_BASE_HEIGHT
+  source.canvasHeight = TEMPLATE_CANVAS_HEIGHT
+  source.elements = elements.map((element, index) => {
+    const next = { ...element }
+    if (typeof next.y === 'number') next.y = Math.round(next.y * yScale)
+    if (typeof next.height === 'number' && next.height > 20) next.height = Math.round(next.height * 1.12)
+    if (isImageSlot(next)) {
+      next.templateAction = 'image'
+      next.placeholderText = '添加图片'
+      next.text = '添加图片'
+    } else if (!next.templateAction && (next.type === 'text' || next.subType === 'title' || (next.subType === 'rect' && next.text))) {
+      next.templateAction = 'text'
+    }
+    if (!next.templateAction) {
+      next.groupId = `${source.id}_decor_${Math.floor((next.y || 0) / 280)}`
+    }
+    next.templateElementId = `${source.id}_${index}`
+    return next
+  })
+  return source
+}
+
 function getTemplates(category) {
-  if (!category || category === '全部') return TEMPLATES
-  return TEMPLATES.filter(t => t.category === category)
+  const templates = !category || category === '全部' ? TEMPLATES : TEMPLATES.filter(t => t.category === category)
+  return templates.map(prepareTemplate)
 }
 
 function getTemplateById(id) {
-  return TEMPLATES.find(t => t.id === id) || null
+  const template = TEMPLATES.find(t => t.id === id)
+  return template ? prepareTemplate(template) : null
 }
 
 module.exports = {
-  TEMPLATES,
+  TEMPLATES: TEMPLATES.map(prepareTemplate),
   TEMPLATE_CATEGORIES,
   getTemplates,
-  getTemplateById
+  getTemplateById,
+  TEMPLATE_CANVAS_HEIGHT
 }

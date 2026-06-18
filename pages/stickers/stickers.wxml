@@ -6,9 +6,12 @@
         <view class="page-title">素材库</view>
       </view>
       <view class="header-actions">
-        <view class="btn btn-small btn-secondary" bindtap="onTapSort">排序</view>
-        <view class="btn btn-small {{isEditing ? 'btn-active' : 'btn-secondary'}}" bindtap="onTapEdit">{{isEditing ? '完成' : '编辑'}}</view>
-        <view class="btn btn-small btn-primary" bindtap="onTapAdd" wx:if="{{!isEditing}}">添加</view>
+        <view class="header-icon-btn" bindtap="onTapSort" hover-class="soft-hover" aria-label="sort">
+          <image class="header-action-icon" src="/assets/icons/arrow-up-down.svg" mode="aspectFit" />
+        </view>
+        <view class="header-icon-btn {{isEditing ? 'active' : ''}}" bindtap="onTapEdit" hover-class="soft-hover" aria-label="edit">
+          <image class="header-action-icon" src="{{isEditing ? '/assets/icons/check.svg' : '/assets/icons/edit-3.svg'}}" mode="aspectFit" />
+        </view>
       </view>
     </view>
     <view class="dashed-divider"></view>
@@ -104,6 +107,10 @@
     </view>
     <view class="safe-spacer"></view>
   </scroll-view>
+
+  <view class="sticker-add-fab" bindtap="onTapAdd" wx:if="{{!isEditing}}" hover-class="soft-hover" aria-label="add sticker">
+    <image class="sticker-add-icon" src="/assets/icons/plus.svg" mode="aspectFit" />
+  </view>
 
   <!-- 手账本选择弹窗 -->
   <view class="preview-mask {{showBookPicker ? 'show' : ''}}" bindtap="closeBookPicker">
