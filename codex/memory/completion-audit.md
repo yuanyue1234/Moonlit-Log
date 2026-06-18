@@ -72,11 +72,11 @@
 ### 已被当前证据证明
 - `editor.wxml` 同时存在两个互斥组件：编辑态 `edit-page-nav` 包含页数、左右翻页、加页和删页；预览态 `preview-page-nav` 循环 `bookPages` 生成可点击页码圆点，并绑定 `onTapPageDot`。
 - 预览圆点组件不包含 `addNewPage` 或 `deleteCurrentPage`，编辑页管理条不包含小圆点循环。
-- 画布逻辑高度已从 `920` 增至 `1120`；显示尺寸由 `_fitCanvasToViewport()` 按窗口、安全区、顶部栏和底部控件保留空间等比计算，WXML 不再直接用逻辑尺寸作为固定显示尺寸。
-- 工具面板最终样式为 `bottom: calc(202rpx + env(safe-area-inset-bottom))`、`z-index: 29`；主工具栏为 `z-index: 31`，页面管理条为 `z-index: 30`，面板及遮罩不会覆盖底部两组控件。
-- `node scripts/verify-editor-ui.js` 通过 57 项检查，`node scripts/verify-editor-layout.js` 通过 4 组视口检查，`node scripts/verify-sticker-lifecycle.js` 通过 9 项检查；相关 `node --check` 与 `git diff --check` 均通过。
+- 画布逻辑高度已从 `920` 增至 `1200`；显示尺寸由 `_fitCanvasToViewport()` 按窗口、安全区、顶部栏、纸张外壳和底部控件保留空间等比计算，紧凑屏不再因漏算外壳而发生边缘裁切。
+- 工具面板最终样式为 `bottom: calc(220rpx + env(safe-area-inset-bottom))`、`z-index: 29`；主工具栏固定高 `104rpx`、`z-index: 31`，页面管理条固定高 `82rpx`、`z-index: 30`，几何间距分别为 `12rpx` 和 `4rpx`。
+- `node scripts/verify-editor-ui.js` 通过 59 项检查，`node scripts/verify-editor-layout.js` 通过 4 组视口与面板间距检查，`node scripts/verify-sticker-lifecycle.js` 通过 9 项检查；相关 `node --check` 与 `git diff --check` 均通过。
 
 ### 尚未被当前证据证明
-- 微信开发者工具模拟器/真机中，`690×1120` 长页在不同屏幕比例下的最终视觉占用是否完全符合用户主观预期。
+- 用户手动 GUI/真机中，`690×1200` 长页在不同屏幕比例下的最终视觉占用是否完全符合主观预期。
 - 工具面板打开后切换另一工具、滚动长内容、唤起文字键盘时的真实触摸和遮挡表现。
 - 预览圆点在很多页面时的横向滚动、当前页高亮和点击跳转触感。

@@ -3554,6 +3554,7 @@
   transform: translateX(-50%);
   z-index: 30;
   box-sizing: border-box;
+  height: 64rpx;
 }
 
 .preview-page-nav .dots-scroll {
@@ -3587,16 +3588,30 @@
 
 .floating-tool-dock {
   z-index: 31;
+  height: 104rpx;
+  box-sizing: border-box;
+}
+
+.floating-tool-dock .tool-btn {
+  height: 86rpx;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 .edit-page-nav {
   z-index: 30;
+  height: 82rpx;
+  box-sizing: border-box;
+}
+
+.edit-page-nav .page-nav-btn {
+  box-sizing: border-box;
 }
 
 .edit-mode .panel {
   left: 18rpx;
   right: 18rpx;
-  bottom: calc(202rpx + env(safe-area-inset-bottom));
+  bottom: calc(220rpx + env(safe-area-inset-bottom));
   max-height: 52vh;
   border: 1rpx solid #eadccf;
   border-radius: 24rpx;
@@ -3614,7 +3629,7 @@
 }
 
 .edit-mode .panel-mask {
-  bottom: calc(198rpx + env(safe-area-inset-bottom));
+  bottom: calc(216rpx + env(safe-area-inset-bottom));
   z-index: 24;
 }
 
